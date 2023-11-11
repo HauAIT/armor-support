@@ -3,7 +3,7 @@ import { system } from '../index.js';
 import chai from 'chai';
 import os from 'os';
 import sinon from 'sinon';
-import * as teen_process from 'teen_process';
+import * as ait_process from 'ait-process';
 import _ from 'lodash';
 
 chai.should();
@@ -11,7 +11,7 @@ chai.should();
 let sandbox, tpMock, osMock = null;
 let SANDBOX = Symbol();
 let mocks = {};
-let libs = {teen_process, os, system};
+let libs = {ait_process, os, system};
 
 describe('system', function () {
   describe('isX functions', function () {
@@ -40,7 +40,7 @@ describe('system', function () {
 
   describe('mac OSX version', function () {
     beforeEach(function () {
-      tpMock = sinon.mock(teen_process);
+      tpMock = sinon.mock(ait_process);
     });
     afterEach(function () {
       tpMock.verify();
@@ -83,7 +83,7 @@ describe('system', function () {
 
     it('should return correct architecture if it is a 64 bit Mac/Linux', async function () {
       mocks.os.expects('type').thrice().returns('Darwin');
-      mocks.teen_process.expects('exec').once().withExactArgs('uname', ['-m']).returns({stdout: 'x86_64'});
+      mocks.ait_process.expects('exec').once().withExactArgs('uname', ['-m']).returns({stdout: 'x86_64'});
       let arch = await system.arch();
       arch.should.equal('64');
       mocks[SANDBOX].verify();
@@ -91,7 +91,7 @@ describe('system', function () {
 
     it('should return correct architecture if it is a 32 bit Mac/Linux', async function () {
       mocks.os.expects('type').twice().returns('Linux');
-      mocks.teen_process.expects('exec').once().withExactArgs('uname', ['-m']).returns({stdout: 'i686'});
+      mocks.ait_process.expects('exec').once().withExactArgs('uname', ['-m']).returns({stdout: 'i686'});
       let arch = await system.arch();
       arch.should.equal('32');
       mocks[SANDBOX].verify();

@@ -101,8 +101,8 @@ describe('util', function () {
 
   describe('escapeSpace', function () {
     it('should do nothing to a string without space', function () {
-      let actual = 'appium';
-      let expected = 'appium';
+      let actual = 'armor';
+      let expected = 'armor';
       util.escapeSpace(actual).should.equal(expected);
     });
 
@@ -113,8 +113,8 @@ describe('util', function () {
     });
 
     it('should escape consecutive spaces', function () {
-      let actual = 'appium   space';
-      let expected = 'appium\\ \\ \\ space';
+      let actual = 'armor   space';
+      let expected = 'armor\\ \\ \\ space';
       util.escapeSpace(actual).should.equal(expected);
     });
   });

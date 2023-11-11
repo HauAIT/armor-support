@@ -20,7 +20,7 @@ describe('#net', function () {
   describe('downloadFile()', function () {
     it('should download file into the target folder', async function () {
       const dstPath = path.join(tmpRoot, 'download.tmp');
-      await downloadFile('https://appium.io/ico/apple-touch-icon-114x114-precomposed.png',
+      await downloadFile('https://armor.io/ico/apple-touch-icon-114x114-precomposed.png',
         dstPath);
       await fs.exists(dstPath).should.eventually.be.true;
     });

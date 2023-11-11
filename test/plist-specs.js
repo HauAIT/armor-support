@@ -28,13 +28,13 @@ describe('plist', function () {
 
     // write some data
     let updatedFields = {
-      'io.appium.test': true
+      'io.armor.test': true
     };
     await plist.updatePlistFile(plistFile, updatedFields, true);
 
     // make sure the data is there
     let content = await plist.parsePlistFile(plistFile);
-    content.should.have.property('io.appium.test');
+    content.should.have.property('io.armor.test');
   });
 
   it('should read binary plist', async function () {

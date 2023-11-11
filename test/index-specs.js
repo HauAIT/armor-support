@@ -1,27 +1,27 @@
 
-import AppiumSupport from '../index.js';
+import ArmorSupport from '../index.js';
 import chai from 'chai';
 
 chai.should();
-let { system, tempDir, util } = AppiumSupport;
+let { system, tempDir, util } = ArmorSupport;
 
 describe('index', function () {
   describe('default', function () {
     it('should expose an object', function () {
-      AppiumSupport.should.exist;
-      AppiumSupport.should.be.an.instanceof(Object);
+      ArmorSupport.should.exist;
+      ArmorSupport.should.be.an.instanceof(Object);
     });
     it('should expose system object', function () {
-      AppiumSupport.system.should.exist;
-      AppiumSupport.system.should.be.an.instanceof(Object);
+      ArmorSupport.system.should.exist;
+      ArmorSupport.system.should.be.an.instanceof(Object);
     });
     it('should expose tempDir object', function () {
-      AppiumSupport.tempDir.should.exist;
-      AppiumSupport.tempDir.should.be.an.instanceof(Object);
+      ArmorSupport.tempDir.should.exist;
+      ArmorSupport.tempDir.should.be.an.instanceof(Object);
     });
     it('should expose util object', function () {
-      AppiumSupport.util.should.exist;
-      AppiumSupport.util.should.be.an.instanceof(Object);
+      ArmorSupport.util.should.exist;
+      ArmorSupport.util.should.be.an.instanceof(Object);
     });
   });
 

@@ -82,7 +82,7 @@ describe('timing', function () {
       // the non-mocked test cannot run if BigInt does not exist,
       // and it cannot be mocked. Luckily support was added in Node 10.4.0,
       // so it should not be a case where we are testing without this,
-      // though it still can be a test that Appium is _used_ without it.
+      // though it still can be a test that Armor is _used_ without it.
       if (!_.isFunction(process.hrtime.bigint)) {
         return this.skip();
       }

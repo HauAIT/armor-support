@@ -1,15 +1,15 @@
 import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
-import * as teenProcess from 'teen_process';
+import * as AITProcess from 'ait-process';
 import sinon from 'sinon';
 import { process } from '../index.js';
-import { retryInterval } from 'asyncbox';
+import { retryInterval } from 'ait-async';
 
 
 chai.should();
 chai.use(chaiAsPromised);
 
-const SubProcess = teenProcess.SubProcess;
+const SubProcess = AITProcess.SubProcess;
 
 describe('process', function () {
   describe('getProcessIds', function () {
@@ -34,7 +34,7 @@ describe('process', function () {
       pids.should.have.length(0);
     });
     it('should throw an error if pgrep fails', async function () {
-      let tpMock = sinon.mock(teenProcess);
+      let tpMock = sinon.mock(AITProcess);
       tpMock.expects('exec').throws({message: 'Oops', code: 2});
 
       await process.getProcessIds('tail').should.eventually.be.rejectedWith(/Oops/);
@@ -72,7 +72,7 @@ describe('process', function () {
       }).should.eventually.be.rejected;
     });
     it('should throw an error if pgrep fails', async function () {
-      let tpMock = sinon.mock(teenProcess);
+      let tpMock = sinon.mock(AITProcess);
       tpMock.expects('exec').throws({message: 'Oops', code: 2});
 
       await process.killProcess('tail').should.eventually.be.rejectedWith(/Oops/);
@@ -80,7 +80,7 @@ describe('process', function () {
       tpMock.restore();
     });
     it('should throw an error if pkill fails', async function () {
-      let tpMock = sinon.mock(teenProcess);
+      let tpMock = sinon.mock(AITProcess);
       tpMock.expects('exec').twice()
         .onFirstCall().returns({stdout: '42\n'})
         .onSecondCall().throws({message: 'Oops', code: 2});

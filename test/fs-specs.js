@@ -1,7 +1,7 @@
 import { fs, tempDir } from '../index.js';
 import chai from 'chai';
 import path from 'path';
-import { exec } from 'teen_process';
+import { exec } from 'ait-process';
 import B from 'bluebird';
 import _ from 'lodash';
 
