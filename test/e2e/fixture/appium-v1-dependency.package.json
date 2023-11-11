@@ -1,0 +1,6 @@
+{
+  "name": "my-project",
+  "dependencies": {
+    "armor": "1.0.0"
+  }
+}
