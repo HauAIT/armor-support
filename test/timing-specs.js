@@ -92,11 +92,11 @@ describe('timing', function () {
     function setupMocks (once = false) {
       if (once) {
         processMock.expects('bigint').once()
-          .onFirstCall().returns(BigInt(1172941153404030));
+          .onFirstCall().returns(BigInt(1172941153404030));/* eslint-disable-line */
       } else {
         processMock.expects('bigint').twice()
-          .onFirstCall().returns(BigInt(1172941153404030))
-          .onSecondCall().returns(BigInt(1172951164887132));
+          .onFirstCall().returns(BigInt(1172941153404030))/* eslint-disable-line */
+          .onSecondCall().returns(BigInt(1172951164887132));/* eslint-disable-line */
       }
     }
 

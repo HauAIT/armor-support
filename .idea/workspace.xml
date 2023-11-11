@@ -4,7 +4,32 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c32ab401-233b-4e7d-aefc-80082578ad96" name="Changes" comment="" />
+    <list default="true" id="c32ab401-233b-4e7d-aefc-80082578ad96" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.eslintrc.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/console.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/console.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/env.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/env.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/fs.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/fs.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/image-util.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/image-util.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/log-internal.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/log-internal.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/logger.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/logger.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/logging.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/logging.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/mjpeg.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/mjpeg.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/mkdirp.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/mkdirp.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/net.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/net.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/node.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/node.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/npm.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/npm.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/plist.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/plist.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/process.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/process.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/system.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/system.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/tempdir.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/tempdir.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/timing.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/timing.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/util.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/util.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/zip.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/zip.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/fs-specs.js" beforeDir="false" afterPath="$PROJECT_DIR$/test/fs-specs.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/timing-specs.js" beforeDir="false" afterPath="$PROJECT_DIR$/test/timing-specs.js" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -25,22 +50,27 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/nguyenmanhduy/Source/armor-support&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;/Applications/WebStorm.app/Contents/plugins/javascript-impl/jsLanguageServicesImpl/external&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/Users/nguyenmanhduy/Source/armor-support-libs",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "ts.external.directory.path": "/Applications/WebStorm.app/Contents/plugins/javascript-impl/jsLanguageServicesImpl/external",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
+    </key>
+  </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
@@ -61,6 +91,7 @@
       <workItem from="1699678378288" duration="5000" />
       <workItem from="1699683664253" duration="3143000" />
       <workItem from="1699687825585" duration="1670000" />
+      <workItem from="1699707944390" duration="936000" />
     </task>
     <servers />
   </component>

@@ -19,6 +19,8 @@
     "build/lib"
   ],
   "dependencies": {
+    "eslint-config-armor": "github:ait-software/eslint-config-armor",
+    "@appium/types": "^0.x",
     "@babel/runtime": "^7.0.0",
     "@colors/colors": "^1.6.0",
     "@u4/opencv4nodejs": "^6.5.2",
