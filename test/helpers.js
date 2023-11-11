@@ -1,25 +1,22 @@
-import {EventEmitter} from 'events';
-import rewiremock, {addPlugin, overrideEntryPoint, plugins} from 'rewiremock';
+import { EventEmitter } from 'events';
 
-overrideEntryPoint(module);
-addPlugin(plugins.nodejs);
 class MockReadWriteStream extends EventEmitter {
-  resume() {}
+  resume () {}
 
-  pause() {}
+  pause () {}
 
-  setEncoding() {}
+  setEncoding () {}
 
-  flush() {}
+  flush () {}
 
-  write(msg) {
+  write (msg) {
     this.emit('data', msg);
   }
 
-  end() {
+  end () {
     this.emit('end');
     this.emit('finish');
   }
 }
 
-export {MockReadWriteStream, rewiremock};
+export { MockReadWriteStream };

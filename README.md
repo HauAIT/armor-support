@@ -1,112 +1,62 @@
-# armor-support
+# appium-support
 
-Utility functions used to support Armor drivers and plugins.
+Utility functions used to support libs used across appium packages.
 
-# Usage in drivers and plugins
+`npm install appium-support`
 
-It is recommended to have Armor as a peer dependency in driver and plugin packages.
-Add the following line to `peerDependencies` section of your module's `package.json`:
+Appium, as of version 1.5 is all based on promises, so this module provides promise wrappers for some common operations.
 
-```js
-  "peerDependencies": {
-    "armor": "^<minimum_server_version>"
-  }
-```
+Most notably, we wrap `fs` for file system commands. Note the addition of `hasAccess`.
+Also note that `fs.mkdir` doesn't throw an error if the directory already exists, it will just resolve.
 
-Afterwards import it in your code similarly to the below example:
+### Methods
 
-```js
-import {timing, util} from 'armor/support';
-```
+- system.isWindows
+- system.isMac
+- system.isLinux
+- system.isOSWin64
+- system.arch
+- system.macOsxVersion
 
-# Usage in helper modules
+- util.hasContent - returns true if input string has content
+- util.hasValue - returns true if input value is not undefined and no null
+- util.escapeSpace
+- util.escapeSpecialChars
+- util.localIp
+- util.cancellableDelay
+- util.multiResolve - multiple path.resolve
+- util.unwrapElement - parse an element ID from an element object: e.g.: `{ELEMENT: 123, "element-6066-11e4-a52e-4f735466cecf": 123}` returns `123`
+- util.wrapElement - convert an element ID to an element object of the form: e.g.: `123` returns `{ELEMENT: 123, "element-6066-11e4-a52e-4f735466cecf": 123}`
 
-If you want to use this module in a helper library, which is not a driver or a plugin,
-then add the following line to `dependencies` section of your module's `package.json`:
+- *fs.hasAccess* - use this over `fs.access`
+- *fs.exists* - calls `fs.hasAccess`
+- *fs.rimraf*
+- *fs.mkdir* - doesn't throw an error if directory already exists
+- *fs.copyFile*
+- fs.open
+- fs.close
+- fs.access
+- fs.readFile
+- fs.writeFile
+- fs.write
+- fs.readlink
+- fs.chmod
+- fs.unlink
+- fs.readdir
+- fs.stat
+- fs.rename
+- *fs.md5*
 
-```js
-  "dependencies": {
-    "@armor/support": "<module_version>"
-  }
-```
+- plist.parsePlistFile
+- plist.updatePlistFile
 
-Afterwards import it in your code similarly to the below example:
+- mkdirp
 
-```js
-import {timing, util} from '@armor/support';
-```
+- logger
 
-### Categories
-
-All utility functions are split into a bunch of different categories. Each category has its own file under the `lib` folder. All utility functions in these files are documented.
-
-#### fs
-
-Most of the functions there are just thin wrappers over utility functions available in [Promises API](https://nodejs.org/api/fs.html#promises-api).
-
-#### env
-
-Several helpers needed by the server to cope with internal dependencies and manifests.
-
-#### console
-
-Wrappers for the command line interface abstraction used by the Armor server.
-
-#### image-util
-
-Utilities to work with images. Use [sharp](https://github.com/lovell/sharp) under the hood.
-
-#### log-internal
-
-Utilities needed for internal Armor log config assistance.
-
-#### logging
-
-See [below](#logger)
-
-#### mjpeg
-
-Helpers needed to implement [MJPEG streaming](https://en.wikipedia.org/wiki/Motion_JPEG#Video_streaming).
-
-#### net
-
-Helpers needed for network interactions, for example, upload and download of files.
-
-#### node
-
-Set of Node.js-specific utility functions needed, for example, to ensure objects immutability or to calculate their sizes.
-
-#### npm
-
-Set of [npm](https://en.wikipedia.org/wiki/Npm_(software))-related helpers.
-
-#### plist
-
-Set of utilities used to read and write data from [plist](https://en.wikipedia.org/wiki/Property_List) files in javascript.
-
-#### process
-
-Helpers for interactions with system processes. These APIs don't support Windows.
-
-#### system
-
-Set of helper functions needed to determine properties of the current operating system.
-
-#### tempdir
-
-Set of helpers that allow interactions with temporary folders.
-
-#### timing
-
-Helpers that allow to measure execution time.
-
-#### util
-
-Miscellaneous utilities.
-
-#### zip
-
-Helpers that allow to work with archives in .ZIP format.
+- zip.extractAllTo - Extracts contents of a zipfile to a directory
+- zip.readEntries - Reads entries (files and directories) of a zipfile
+- zip.toInMemoryZip - Converts a directory into a base64 zipfile
 
 
 ## logger
@@ -124,7 +74,7 @@ The default threshold level is `verbose`.
 The logged output, by default, will be `level prefix message`. So
 
 ```js
-import { logger } from 'armor-support';
+import { logger } from 'appium-support';
 let log = logger.getLogger('mymodule');
 log.warn('a warning');`
 ```
@@ -135,9 +85,10 @@ Will produce
 warn mymodule a warning
 ```
 
+
 ### Environment variables
 
-There are two environment variable flags that affect the way `logger` works.
+There are two environment variable flags that affect the way `appium-base-driver` `logger` works.
 
 `_TESTING`
 
@@ -157,43 +108,43 @@ There are two environment variable flags that affect the way `logger` works.
 `log[level](message)`
 
 - logs to `level`
-```js
-import { logger } from 'armor-support';
-let log = logger.getLogger('mymodule');
+    ```js
+    import { logger } from 'appium-support';
+    let log = logger.getLogger('mymodule');
 
-log.info('hi!');
-// => info mymodule hi!
-```
+    log.info('hi!');
+    // => info mymodule hi!
+    ```
 
 `log.unwrap()`
 
 - retrieves the underlying [npmlog](https://github.com/npm/npmlog) object, in order to manage how logging is done at a low level (e.g., changing output streams, retrieving an array of messages, adding log levels, etc.).
 
-```js
-import { getLogger } from 'armor-base-driver';
-let log = getLogger('mymodule');
+    ```js
+    import { getLogger } from 'appium-base-driver';
+    let log = getLogger('mymodule');
 
-log.info('hi!');
+    log.info('hi!');
 
-let npmlogger = log.unwrap();
+    let npmlogger = log.unwrap();
 
-// any `npmlog` methods
-let logs = npmlogger.record;
-// logs === [ { id: 0, level: 'info', prefix: 'mymodule', message: 'hi!', messageRaw: [ 'hi!' ] }]
-```
+    // any `npmlog` methods
+    let logs = npmlogger.record;
+    // logs === [ { id: 0, level: 'info', prefix: 'mymodule', message: 'hi!', messageRaw: [ 'hi!' ] }]
+    ```
 
 `log.errorAndThrow(error)`
 
 - logs the error passed in, at `error` level, and then throws the error. If the error passed in is not an instance of [Error](https://nodejs.org/api/errors.html#errors_class_error) (either directly, or a subclass of `Error`) it will be wrapped in a generic `Error` object.
 
-```js
-import { getLogger } from 'armor-base-driver';
-let log = getLogger('mymodule');
+    ```js
+    import { getLogger } from 'appium-base-driver';
+    let log = getLogger('mymodule');
 
-// previously there would be two lines
-log.error('This is an error');
-throw new Error('This is an error');
+    // previously there would be two lines
+    log.error('This is an error');
+    throw new Error('This is an error');
 
-// now is compacted
-log.errorAndThrow('This is an error');
-```
+    // now is compacted
+    log.errorAndThrow('This is an error');
+    ```
