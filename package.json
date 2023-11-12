@@ -1,7 +1,7 @@
 {
   "name": "armor-support",
   "description": "Support libs used across armor packages",
-  "version": "1.0",
+  "version": "1.0.0",
   "author": "ait-software",
   "license": "Apache-2.0",
   "engines": [
@@ -20,7 +20,7 @@
   ],
   "dependencies": {
     "eslint-config-armor": "github:ait-software/eslint-config-armor",
-    "@appium/types": "^0.x",
+    "armor-types": "github:ait-software/armor-types",
     "@babel/runtime": "^7.0.0",
     "@colors/colors": "^1.6.0",
     "@u4/opencv4nodejs": "^6.5.2",
