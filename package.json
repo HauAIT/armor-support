@@ -33,7 +33,7 @@
     "bplist-parser": "^0.x",
     "form-data": "^4.0.0",
     "get-stream": "^6.0.0",
-    "glob": "^7.1.2",
+    "glob": "^10.3.10",
     "jimp": "^0.x",
     "jsftp": "^2.1.2",
     "klaw": "^3.0.0",
