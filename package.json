@@ -1,7 +1,7 @@
 {
   "name": "armor-support",
   "description": "Support libs used across armor packages",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "ait-software",
   "license": "Apache-2.0",
   "engines": [
