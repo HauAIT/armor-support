@@ -1,56 +1,53 @@
 "use strict";
-
-var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault");
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.arch = arch;
-exports.isLinux = isLinux;
-exports.isMac = isMac;
-exports.isOSWin64 = isOSWin64;
-exports.isWindows = isWindows;
-exports.macOsxVersion = macOsxVersion;
-require("source-map-support/register");
-var _aitProcess = require("ait-process");
-var _lodash = _interopRequireDefault(require("lodash"));
-var _os = _interopRequireDefault(require("os"));
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.macOsxVersion = exports.arch = exports.isOSWin64 = exports.isLinux = exports.isMac = exports.isWindows = void 0;
+const ait_process_1 = require("ait-process");
+const lodash_1 = __importDefault(require("lodash"));
+const os_1 = __importDefault(require("os"));
 const VERSION_PATTERN = /^(\d+\.\d+)/m;
 function isWindows() {
-  return _os.default.type() === 'Windows_NT';
+    return os_1.default.type() === 'Windows_NT';
 }
+exports.isWindows = isWindows;
 function isMac() {
-  return _os.default.type() === 'Darwin';
+    return os_1.default.type() === 'Darwin';
 }
+exports.isMac = isMac;
 function isLinux() {
-  return !isWindows() && !isMac();
+    return !isWindows() && !isMac();
 }
+exports.isLinux = isLinux;
 function isOSWin64() {
-  return process.arch === 'x64' || _lodash.default.has(process.env, 'PROCESSOR_ARCHITEW6432');
+    return process.arch === 'x64' || lodash_1.default.has(process.env, 'PROCESSOR_ARCHITEW6432');
 }
+exports.isOSWin64 = isOSWin64;
 async function arch() {
-  if (isLinux() || isMac()) {
-    let {
-      stdout
-    } = await (0, _aitProcess.exec)('uname', ['-m']);
-    return stdout.trim() === 'i686' ? '32' : '64';
-  } else if (isWindows()) {
-    let is64 = this.isOSWin64();
-    return is64 ? '64' : '32';
-  }
+    if (isLinux() || isMac()) {
+        let { stdout } = await (0, ait_process_1.exec)('uname', ['-m']);
+        return stdout.trim() === 'i686' ? '32' : '64';
+    }
+    else if (isWindows()) {
+        let is64 = this.isOSWin64();
+        return is64 ? '64' : '32';
+    }
 }
+exports.arch = arch;
 async function macOsxVersion() {
-  let stdout;
-  try {
-    stdout = (await (0, _aitProcess.exec)('sw_vers', ['-productVersion'])).stdout.trim();
-  } catch (err) {
-    throw new Error(`Could not detect Mac OS X Version: ${err}`);
-  }
-  const versionMatch = VERSION_PATTERN.exec(stdout);
-  if (!versionMatch) {
-    throw new Error(`Could not detect Mac OS X Version from sw_vers output: '${stdout}'`);
-  }
-  return versionMatch[1];
-}require('source-map-support').install();
-
-
-//# sourceMappingURL=data:application/json;charset=utf8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoibGliL3N5c3RlbS5qcyIsIm5hbWVzIjpbIl9haXRQcm9jZXNzIiwicmVxdWlyZSIsIl9sb2Rhc2giLCJfaW50ZXJvcFJlcXVpcmVEZWZhdWx0IiwiX29zIiwiVkVSU0lPTl9QQVRURVJOIiwiaXNXaW5kb3dzIiwib3MiLCJ0eXBlIiwiaXNNYWMiLCJpc0xpbnV4IiwiaXNPU1dpbjY0IiwicHJvY2VzcyIsImFyY2giLCJfIiwiaGFzIiwiZW52Iiwic3Rkb3V0IiwiZXhlYyIsInRyaW0iLCJpczY0IiwibWFjT3N4VmVyc2lvbiIsImVyciIsIkVycm9yIiwidmVyc2lvbk1hdGNoIl0sInNvdXJjZVJvb3QiOiIuLi8uLiIsInNvdXJjZXMiOlsibGliL3N5c3RlbS5qcyJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQge2V4ZWN9IGZyb20gJ2FpdC1wcm9jZXNzJztcbmltcG9ydCBfIGZyb20gJ2xvZGFzaCc7XG5pbXBvcnQgb3MgZnJvbSAnb3MnO1xuXG5jb25zdCBWRVJTSU9OX1BBVFRFUk4gPSAvXihcXGQrXFwuXFxkKykvbTtcblxuZnVuY3Rpb24gaXNXaW5kb3dzICgpIHtcbiAgcmV0dXJuIG9zLnR5cGUoKSA9PT0gJ1dpbmRvd3NfTlQnO1xufVxuXG5mdW5jdGlvbiBpc01hYyAoKSB7XG4gIHJldHVybiBvcy50eXBlKCkgPT09ICdEYXJ3aW4nO1xufVxuXG5mdW5jdGlvbiBpc0xpbnV4ICgpIHtcbiAgcmV0dXJuICFpc1dpbmRvd3MoKSAmJiAhaXNNYWMoKTtcbn1cblxuZnVuY3Rpb24gaXNPU1dpbjY0ICgpIHtcbiAgcmV0dXJuIHByb2Nlc3MuYXJjaCA9PT0gJ3g2NCcgfHwgXy5oYXMocHJvY2Vzcy5lbnYsICdQUk9DRVNTT1JfQVJDSElURVc2NDMyJyk7XG59XG5cbmFzeW5jIGZ1bmN0aW9uIGFyY2ggKCkge1xuICBpZiAoaXNMaW51eCgpIHx8IGlzTWFjKCkpIHtcbiAgICBsZXQge3N0ZG91dH0gPSBhd2FpdCBleGVjKCd1bmFtZScsIFsnLW0nXSk7XG4gICAgcmV0dXJuIHN0ZG91dC50cmltKCkgPT09ICdpNjg2JyA/ICczMicgOiAnNjQnO1xuICB9IGVsc2UgaWYgKGlzV2luZG93cygpKSB7XG4gICAgbGV0IGlzNjQgPSB0aGlzLmlzT1NXaW42NCgpO1xuICAgIHJldHVybiBpczY0ID8gJzY0JyA6ICczMic7XG4gIH1cbn1cblxuYXN5bmMgZnVuY3Rpb24gbWFjT3N4VmVyc2lvbiAoKSB7XG4gIGxldCBzdGRvdXQ7XG4gIHRyeSB7XG4gICAgc3Rkb3V0ID0gKGF3YWl0IGV4ZWMoJ3N3X3ZlcnMnLCBbJy1wcm9kdWN0VmVyc2lvbiddKSkuc3Rkb3V0LnRyaW0oKTtcbiAgfSBjYXRjaCAoZXJyKSB7XG4gICAgdGhyb3cgbmV3IEVycm9yKGBDb3VsZCBub3QgZGV0ZWN0IE1hYyBPUyBYIFZlcnNpb246ICR7ZXJyfWApO1xuICB9XG5cbiAgY29uc3QgdmVyc2lvbk1hdGNoID0gVkVSU0lPTl9QQVRURVJOLmV4ZWMoc3Rkb3V0KTtcbiAgaWYgKCF2ZXJzaW9uTWF0Y2gpIHtcbiAgICB0aHJvdyBuZXcgRXJyb3IoYENvdWxkIG5vdCBkZXRlY3QgTWFjIE9TIFggVmVyc2lvbiBmcm9tIHN3X3ZlcnMgb3V0cHV0OiAnJHtzdGRvdXR9J2ApO1xuICB9XG4gIHJldHVybiB2ZXJzaW9uTWF0Y2hbMV07XG59XG5cbmV4cG9ydCB7aXNXaW5kb3dzLCBpc01hYywgaXNMaW51eCwgaXNPU1dpbjY0LCBhcmNoLCBtYWNPc3hWZXJzaW9ufTtcbiJdLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7Ozs7OztBQUFBLElBQUFBLFdBQUEsR0FBQUMsT0FBQTtBQUNBLElBQUFDLE9BQUEsR0FBQUMsc0JBQUEsQ0FBQUYsT0FBQTtBQUNBLElBQUFHLEdBQUEsR0FBQUQsc0JBQUEsQ0FBQUYsT0FBQTtBQUVBLE1BQU1JLGVBQWUsR0FBRyxjQUFjO0FBRXRDLFNBQVNDLFNBQVNBLENBQUEsRUFBSTtFQUNwQixPQUFPQyxXQUFFLENBQUNDLElBQUksQ0FBQyxDQUFDLEtBQUssWUFBWTtBQUNuQztBQUVBLFNBQVNDLEtBQUtBLENBQUEsRUFBSTtFQUNoQixPQUFPRixXQUFFLENBQUNDLElBQUksQ0FBQyxDQUFDLEtBQUssUUFBUTtBQUMvQjtBQUVBLFNBQVNFLE9BQU9BLENBQUEsRUFBSTtFQUNsQixPQUFPLENBQUNKLFNBQVMsQ0FBQyxDQUFDLElBQUksQ0FBQ0csS0FBSyxDQUFDLENBQUM7QUFDakM7QUFFQSxTQUFTRSxTQUFTQSxDQUFBLEVBQUk7RUFDcEIsT0FBT0MsT0FBTyxDQUFDQyxJQUFJLEtBQUssS0FBSyxJQUFJQyxlQUFDLENBQUNDLEdBQUcsQ0FBQ0gsT0FBTyxDQUFDSSxHQUFHLEVBQUUsd0JBQXdCLENBQUM7QUFDL0U7QUFFQSxlQUFlSCxJQUFJQSxDQUFBLEVBQUk7RUFDckIsSUFBSUgsT0FBTyxDQUFDLENBQUMsSUFBSUQsS0FBSyxDQUFDLENBQUMsRUFBRTtJQUN4QixJQUFJO01BQUNRO0lBQU0sQ0FBQyxHQUFHLE1BQU0sSUFBQUMsZ0JBQUksRUFBQyxPQUFPLEVBQUUsQ0FBQyxJQUFJLENBQUMsQ0FBQztJQUMxQyxPQUFPRCxNQUFNLENBQUNFLElBQUksQ0FBQyxDQUFDLEtBQUssTUFBTSxHQUFHLElBQUksR0FBRyxJQUFJO0VBQy9DLENBQUMsTUFBTSxJQUFJYixTQUFTLENBQUMsQ0FBQyxFQUFFO0lBQ3RCLElBQUljLElBQUksR0FBRyxJQUFJLENBQUNULFNBQVMsQ0FBQyxDQUFDO0lBQzNCLE9BQU9TLElBQUksR0FBRyxJQUFJLEdBQUcsSUFBSTtFQUMzQjtBQUNGO0FBRUEsZUFBZUMsYUFBYUEsQ0FBQSxFQUFJO0VBQzlCLElBQUlKLE1BQU07RUFDVixJQUFJO0lBQ0ZBLE1BQU0sR0FBRyxDQUFDLE1BQU0sSUFBQUMsZ0JBQUksRUFBQyxTQUFTLEVBQUUsQ0FBQyxpQkFBaUIsQ0FBQyxDQUFDLEVBQUVELE1BQU0sQ0FBQ0UsSUFBSSxDQUFDLENBQUM7RUFDckUsQ0FBQyxDQUFDLE9BQU9HLEdBQUcsRUFBRTtJQUNaLE1BQU0sSUFBSUMsS0FBSyxDQUFFLHNDQUFxQ0QsR0FBSSxFQUFDLENBQUM7RUFDOUQ7RUFFQSxNQUFNRSxZQUFZLEdBQUduQixlQUFlLENBQUNhLElBQUksQ0FBQ0QsTUFBTSxDQUFDO0VBQ2pELElBQUksQ0FBQ08sWUFBWSxFQUFFO0lBQ2pCLE1BQU0sSUFBSUQsS0FBSyxDQUFFLDJEQUEwRE4sTUFBTyxHQUFFLENBQUM7RUFDdkY7RUFDQSxPQUFPTyxZQUFZLENBQUMsQ0FBQyxDQUFDO0FBQ3hCIn0=
+    let stdout;
+    try {
+        stdout = (await (0, ait_process_1.exec)('sw_vers', ['-productVersion'])).stdout.trim();
+    }
+    catch (err) {
+        throw new Error(`Could not detect Mac OS X Version: ${err}`);
+    }
+    const versionMatch = VERSION_PATTERN.exec(stdout);
+    if (!versionMatch) {
+        throw new Error(`Could not detect Mac OS X Version from sw_vers output: '${stdout}'`);
+    }
+    return versionMatch[1];
+}
+exports.macOsxVersion = macOsxVersion;
+//# sourceMappingURL=system.js.map

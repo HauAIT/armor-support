@@ -1,161 +1,225 @@
 "use strict";
-
-var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault");
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.deepFreeze = deepFreeze;
-exports.getModuleRootSync = getModuleRootSync;
-exports.getObjectId = getObjectId;
-exports.getObjectSize = getObjectSize;
-exports.requirePackage = requirePackage;
-require("source-map-support/register");
-var _system = require("./system");
-var _logger = _interopRequireDefault(require("./logger"));
-var _lodash = _interopRequireDefault(require("lodash"));
-var _aitProcess = require("ait-process");
-var _path = _interopRequireDefault(require("path"));
-var _fs2 = _interopRequireDefault(require("fs"));
-var _uuid = require("uuid");
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getModuleRootSync = exports.deepFreeze = exports.getObjectId = exports.getObjectSize = exports.requirePackage = void 0;
+const system_1 = require("./system");
+const logger_1 = __importDefault(require("./logger"));
+const lodash_1 = __importDefault(require("lodash"));
+const ait_process_1 = require("ait-process");
+const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
+const uuid_1 = require("uuid");
 const ECMA_SIZES = Object.freeze({
-  STRING: 2,
-  BOOLEAN: 4,
-  NUMBER: 8
+    STRING: 2,
+    BOOLEAN: 4,
+    NUMBER: 8,
 });
+/**
+ * Internal utility to link global package to local context
+ *
+ * @param {string} packageName - name of the package to link
+ * @throws {Error} If the command fails
+ */
 async function linkGlobalPackage(packageName) {
-  try {
-    _logger.default.debug(`Linking package '${packageName}'`);
-    const cmd = (0, _system.isWindows)() ? 'npm.cmd' : 'npm';
-    await (0, _aitProcess.exec)(cmd, ['link', packageName], {
-      timeout: 20000
-    });
-  } catch (err) {
-    const msg = `Unable to load package '${packageName}', linking failed: ${err.message}`;
-    _logger.default.debug(msg);
-    if (err.stderr) {
-      _logger.default.debug(err.stderr);
+    try {
+        logger_1.default.debug(`Linking package '${packageName}'`);
+        const cmd = (0, system_1.isWindows)() ? 'npm.cmd' : 'npm';
+        await (0, ait_process_1.exec)(cmd, ['link', packageName], { timeout: 20000 });
     }
-    throw new Error(msg);
-  }
+    catch (err) {
+        const msg = `Unable to load package '${packageName}', linking failed: ${err.message}`;
+        logger_1.default.debug(msg);
+        if (err.stderr) {
+            // log the stderr if there, but do not add to thrown error as it is
+            // _very_ verbose
+            logger_1.default.debug(err.stderr);
+        }
+        throw new Error(msg);
+    }
 }
+/**
+ * Utility function to extend node functionality, allowing us to require
+ * modules that are installed globally. If the package cannot be required,
+ * this will attempt to link the package and then re-require it
+ *
+ * @param {string} packageName - the name of the package to be required
+ * @returns {Promise<unknown>} - the package object
+ * @throws {Error} If the package is not found locally or globally
+ */
 async function requirePackage(packageName) {
-  try {
-    _logger.default.debug(`Loading local package '${packageName}'`);
-    return require(packageName);
-  } catch (err) {
-    _logger.default.debug(`Failed to load local package '${packageName}': ${err.message}`);
-  }
-  try {
-    var _process$env$npm_conf;
-    const globalPackageName = _path.default.resolve((_process$env$npm_conf = process.env.npm_config_prefix) !== null && _process$env$npm_conf !== void 0 ? _process$env$npm_conf : '', 'lib', 'node_modules', packageName);
-    _logger.default.debug(`Loading global package '${globalPackageName}'`);
-    return require(globalPackageName);
-  } catch (err) {
-    _logger.default.debug(`Failed to load global package '${packageName}': ${err.message}`);
-  }
-  try {
-    await linkGlobalPackage(packageName);
-    _logger.default.debug(`Retrying load of linked package '${packageName}'`);
-    return require(packageName);
-  } catch (err) {
-    _logger.default.errorAndThrow(`Unable to load package '${packageName}': ${err.message}`);
-  }
+    // first, get it in the normal way (see https://nodejs.org/api/modules.html#modules_all_together)
+    try {
+        logger_1.default.debug(`Loading local package '${packageName}'`);
+        return require(packageName);
+    }
+    catch (err) {
+        logger_1.default.debug(`Failed to load local package '${packageName}': ${err.message}`);
+    }
+    // second, get it from where it ought to be in the global node_modules
+    try {
+        const globalPackageName = path_1.default.resolve(process.env.npm_config_prefix ?? '', 'lib', 'node_modules', packageName);
+        logger_1.default.debug(`Loading global package '${globalPackageName}'`);
+        return require(globalPackageName);
+    }
+    catch (err) {
+        logger_1.default.debug(`Failed to load global package '${packageName}': ${err.message}`);
+    }
+    // third, link the file and get locally
+    try {
+        await linkGlobalPackage(packageName);
+        logger_1.default.debug(`Retrying load of linked package '${packageName}'`);
+        return require(packageName);
+    }
+    catch (err) {
+        logger_1.default.errorAndThrow(`Unable to load package '${packageName}': ${err.message}`);
+    }
 }
+exports.requirePackage = requirePackage;
 function extractAllProperties(obj) {
-  const stringProperties = [];
-  for (const prop in obj) {
-    stringProperties.push(prop);
-  }
-  if (_lodash.default.isFunction(Object.getOwnPropertySymbols)) {
-    stringProperties.push(...Object.getOwnPropertySymbols(obj));
-  }
-  return stringProperties;
+    const stringProperties = [];
+    for (const prop in obj) {
+        stringProperties.push(prop);
+    }
+    if (lodash_1.default.isFunction(Object.getOwnPropertySymbols)) {
+        stringProperties.push(...Object.getOwnPropertySymbols(obj));
+    }
+    return stringProperties;
 }
 function _getSizeOfObject(seen, object) {
-  if (_lodash.default.isNil(object)) {
-    return 0;
-  }
-  let bytes = 0;
-  const properties = extractAllProperties(object);
-  for (const key of properties) {
-    if (typeof object[key] === 'object' && !_lodash.default.isNil(object[key])) {
-      if (seen.has(object[key])) {
-        continue;
-      }
-      seen.add(object[key]);
-    }
-    bytes += getCalculator(seen)(key);
-    try {
-      bytes += getCalculator(seen)(object[key]);
-    } catch (ex) {
-      if (ex instanceof RangeError) {
-        bytes = 0;
-      }
-    }
-  }
-  return bytes;
-}
-function getCalculator(seen) {
-  return function calculator(obj) {
-    if (_lodash.default.isBuffer(obj)) {
-      return obj.length;
-    }
-    switch (typeof obj) {
-      case 'string':
-        return obj.length * ECMA_SIZES.STRING;
-      case 'boolean':
-        return ECMA_SIZES.BOOLEAN;
-      case 'number':
-        return ECMA_SIZES.NUMBER;
-      case 'symbol':
-        return _lodash.default.isFunction(Symbol.keyFor) && Symbol.keyFor(obj) ? Symbol.keyFor(obj).length * ECMA_SIZES.STRING : (obj.toString().length - 8) * ECMA_SIZES.STRING;
-      case 'object':
-        return _lodash.default.isArray(obj) ? obj.map(getCalculator(seen)).reduce((acc, curr) => acc + curr, 0) : _getSizeOfObject(seen, obj);
-      default:
+    if (lodash_1.default.isNil(object)) {
         return 0;
     }
-  };
-}
-function getObjectSize(obj) {
-  return getCalculator(new WeakSet())(obj);
-}
-const OBJECTS_MAPPING = new WeakMap();
-function getObjectId(object) {
-  if (!OBJECTS_MAPPING.has(object)) {
-    OBJECTS_MAPPING.set(object, (0, _uuid.v4)());
-  }
-  return OBJECTS_MAPPING.get(object);
-}
-function deepFreeze(object) {
-  let propNames;
-  try {
-    propNames = Object.getOwnPropertyNames(object);
-  } catch (ign) {
-    return object;
-  }
-  for (const name of propNames) {
-    const value = object[name];
-    if (value && typeof value === 'object') {
-      deepFreeze(value);
+    let bytes = 0;
+    const properties = extractAllProperties(object);
+    for (const key of properties) {
+        // Do not recalculate circular references
+        if (typeof object[key] === 'object' && !lodash_1.default.isNil(object[key])) {
+            if (seen.has(object[key])) {
+                continue;
+            }
+            seen.add(object[key]);
+        }
+        bytes += getCalculator(seen)(key);
+        try {
+            bytes += getCalculator(seen)(object[key]);
+        }
+        catch (ex) {
+            if (ex instanceof RangeError) {
+                // circular reference detected, final result might be incorrect
+                // let's be nice and not throw an exception
+                bytes = 0;
+            }
+        }
     }
-  }
-  return Object.freeze(object);
+    return bytes;
 }
-function getModuleRootSync(moduleName, filePath) {
-  let currentDir = _path.default.dirname(_path.default.resolve(filePath));
-  let isAtFsRoot = false;
-  while (!isAtFsRoot) {
-    const manifestPath = _path.default.join(currentDir, 'package.json');
+function getCalculator(seen) {
+    return function calculator(obj) {
+        if (lodash_1.default.isBuffer(obj)) {
+            return obj.length;
+        }
+        switch (typeof obj) {
+            case 'string':
+                return obj.length * ECMA_SIZES.STRING;
+            case 'boolean':
+                return ECMA_SIZES.BOOLEAN;
+            case 'number':
+                return ECMA_SIZES.NUMBER;
+            case 'symbol':
+                return lodash_1.default.isFunction(Symbol.keyFor) && Symbol.keyFor(obj)
+                    ? /** @type {string} */ (Symbol.keyFor(obj)).length * ECMA_SIZES.STRING
+                    : (obj.toString().length - 8) * ECMA_SIZES.STRING;
+            case 'object':
+                return lodash_1.default.isArray(obj)
+                    ? obj.map(getCalculator(seen)).reduce((acc, curr) => acc + curr, 0)
+                    : _getSizeOfObject(seen, obj);
+            default:
+                return 0;
+        }
+    };
+}
+/**
+ * Calculate the in-depth size in memory of the provided object.
+ * The original implementation is borrowed from https://github.com/miktam/sizeof.
+ *
+ * @param {*} obj An object whose size should be calculated
+ * @returns {number} Object size in bytes.
+ */
+function getObjectSize(obj) {
+    return getCalculator(new WeakSet())(obj);
+}
+exports.getObjectSize = getObjectSize;
+const OBJECTS_MAPPING = new WeakMap();
+/**
+ * Calculates a unique object identifier
+ *
+ * @param {object} object Any valid ECMA object
+ * @returns {string} A uuidV4 string that uniquely identifies given object
+ */
+function getObjectId(object) {
+    if (!OBJECTS_MAPPING.has(object)) {
+        OBJECTS_MAPPING.set(object, (0, uuid_1.v4)());
+    }
+    return OBJECTS_MAPPING.get(object);
+}
+exports.getObjectId = getObjectId;
+/**
+ * Perform deep freeze of the given object (e. g.
+ * all nested objects also become immutable).
+ * If the passed object is of a plain type
+ * then no change is done and the same object
+ * is returned.
+ * ! This function changes the given object,
+ * so it becomes immutable.
+ *
+ * @param {*} object Any valid ECMA object
+ * @returns {*} The same object that was passed to the
+ * function after it was made immutable.
+ */
+function deepFreeze(object) {
+    let propNames;
     try {
-      if (_fs2.default.existsSync(manifestPath) && JSON.parse(_fs2.default.readFileSync(manifestPath, 'utf8')).name === moduleName) {
-        return currentDir;
-      }
-    } catch (ign) {}
-    currentDir = _path.default.dirname(currentDir);
-    isAtFsRoot = currentDir.length <= _path.default.dirname(currentDir).length;
-  }
-  return null;
-}require('source-map-support').install();
-
-
-//# sourceMappingURL=data:application/json;charset=utf8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoibGliL25vZGUuanMiLCJuYW1lcyI6WyJfc3lzdGVtIiwicmVxdWlyZSIsIl9sb2dnZXIiLCJfaW50ZXJvcFJlcXVpcmVEZWZhdWx0IiwiX2xvZGFzaCIsIl9haXRQcm9jZXNzIiwiX3BhdGgiLCJfZnMyIiwiX3V1aWQiLCJFQ01BX1NJWkVTIiwiT2JqZWN0IiwiZnJlZXplIiwiU1RSSU5HIiwiQk9PTEVBTiIsIk5VTUJFUiIsImxpbmtHbG9iYWxQYWNrYWdlIiwicGFja2FnZU5hbWUiLCJsb2ciLCJkZWJ1ZyIsImNtZCIsImlzV2luZG93cyIsImV4ZWMiLCJ0aW1lb3V0IiwiZXJyIiwibXNnIiwibWVzc2FnZSIsInN0ZGVyciIsIkVycm9yIiwicmVxdWlyZVBhY2thZ2UiLCJfcHJvY2VzcyRlbnYkbnBtX2NvbmYiLCJnbG9iYWxQYWNrYWdlTmFtZSIsInBhdGgiLCJyZXNvbHZlIiwicHJvY2VzcyIsImVudiIsIm5wbV9jb25maWdfcHJlZml4IiwiZXJyb3JBbmRUaHJvdyIsImV4dHJhY3RBbGxQcm9wZXJ0aWVzIiwib2JqIiwic3RyaW5nUHJvcGVydGllcyIsInByb3AiLCJwdXNoIiwiXyIsImlzRnVuY3Rpb24iLCJnZXRPd25Qcm9wZXJ0eVN5bWJvbHMiLCJfZ2V0U2l6ZU9mT2JqZWN0Iiwic2VlbiIsIm9iamVjdCIsImlzTmlsIiwiYnl0ZXMiLCJwcm9wZXJ0aWVzIiwia2V5IiwiaGFzIiwiYWRkIiwiZ2V0Q2FsY3VsYXRvciIsImV4IiwiUmFuZ2VFcnJvciIsImNhbGN1bGF0b3IiLCJpc0J1ZmZlciIsImxlbmd0aCIsIlN5bWJvbCIsImtleUZvciIsInRvU3RyaW5nIiwiaXNBcnJheSIsIm1hcCIsInJlZHVjZSIsImFjYyIsImN1cnIiLCJnZXRPYmplY3RTaXplIiwiV2Vha1NldCIsIk9CSkVDVFNfTUFQUElORyIsIldlYWtNYXAiLCJnZXRPYmplY3RJZCIsInNldCIsInV1aWRWNCIsImdldCIsImRlZXBGcmVlemUiLCJwcm9wTmFtZXMiLCJnZXRPd25Qcm9wZXJ0eU5hbWVzIiwiaWduIiwibmFtZSIsInZhbHVlIiwiZ2V0TW9kdWxlUm9vdFN5bmMiLCJtb2R1bGVOYW1lIiwiZmlsZVBhdGgiLCJjdXJyZW50RGlyIiwiZGlybmFtZSIsImlzQXRGc1Jvb3QiLCJtYW5pZmVzdFBhdGgiLCJqb2luIiwiX2ZzIiwiZXhpc3RzU3luYyIsIkpTT04iLCJwYXJzZSIsInJlYWRGaWxlU3luYyJdLCJzb3VyY2VSb290IjoiLi4vLi4iLCJzb3VyY2VzIjpbImxpYi9ub2RlLmpzIl0sInNvdXJjZXNDb250ZW50IjpbImltcG9ydCB7aXNXaW5kb3dzfSBmcm9tICcuL3N5c3RlbSc7XG5pbXBvcnQgbG9nIGZyb20gJy4vbG9nZ2VyJztcbmltcG9ydCBfIGZyb20gJ2xvZGFzaCc7XG5pbXBvcnQge2V4ZWN9IGZyb20gJ2FpdC1wcm9jZXNzJztcbmltcG9ydCBwYXRoIGZyb20gJ3BhdGgnO1xuaW1wb3J0IF9mcyBmcm9tICdmcyc7XG5pbXBvcnQge3Y0IGFzIHV1aWRWNH0gZnJvbSAndXVpZCc7XG5cbmNvbnN0IEVDTUFfU0laRVMgPSBPYmplY3QuZnJlZXplKHtcbiAgU1RSSU5HOiAyLFxuICBCT09MRUFOOiA0LFxuICBOVU1CRVI6IDgsXG59KTtcblxuLyoqXG4gKiBJbnRlcm5hbCB1dGlsaXR5IHRvIGxpbmsgZ2xvYmFsIHBhY2thZ2UgdG8gbG9jYWwgY29udGV4dFxuICpcbiAqIEBwYXJhbSB7c3RyaW5nfSBwYWNrYWdlTmFtZSAtIG5hbWUgb2YgdGhlIHBhY2thZ2UgdG8gbGlua1xuICogQHRocm93cyB7RXJyb3J9IElmIHRoZSBjb21tYW5kIGZhaWxzXG4gKi9cbmFzeW5jIGZ1bmN0aW9uIGxpbmtHbG9iYWxQYWNrYWdlIChwYWNrYWdlTmFtZSkge1xuICB0cnkge1xuICAgIGxvZy5kZWJ1ZyhgTGlua2luZyBwYWNrYWdlICcke3BhY2thZ2VOYW1lfSdgKTtcbiAgICBjb25zdCBjbWQgPSBpc1dpbmRvd3MoKSA/ICducG0uY21kJyA6ICducG0nO1xuICAgIGF3YWl0IGV4ZWMoY21kLCBbJ2xpbmsnLCBwYWNrYWdlTmFtZV0sIHt0aW1lb3V0OiAyMDAwMH0pO1xuICB9IGNhdGNoIChlcnIpIHtcbiAgICBjb25zdCBtc2cgPSBgVW5hYmxlIHRvIGxvYWQgcGFja2FnZSAnJHtwYWNrYWdlTmFtZX0nLCBsaW5raW5nIGZhaWxlZDogJHtlcnIubWVzc2FnZX1gO1xuICAgIGxvZy5kZWJ1Zyhtc2cpO1xuICAgIGlmIChlcnIuc3RkZXJyKSB7XG4gICAgICAvLyBsb2cgdGhlIHN0ZGVyciBpZiB0aGVyZSwgYnV0IGRvIG5vdCBhZGQgdG8gdGhyb3duIGVycm9yIGFzIGl0IGlzXG4gICAgICAvLyBfdmVyeV8gdmVyYm9zZVxuICAgICAgbG9nLmRlYnVnKGVyci5zdGRlcnIpO1xuICAgIH1cbiAgICB0aHJvdyBuZXcgRXJyb3IobXNnKTtcbiAgfVxufVxuXG4vKipcbiAqIFV0aWxpdHkgZnVuY3Rpb24gdG8gZXh0ZW5kIG5vZGUgZnVuY3Rpb25hbGl0eSwgYWxsb3dpbmcgdXMgdG8gcmVxdWlyZVxuICogbW9kdWxlcyB0aGF0IGFyZSBpbnN0YWxsZWQgZ2xvYmFsbHkuIElmIHRoZSBwYWNrYWdlIGNhbm5vdCBiZSByZXF1aXJlZCxcbiAqIHRoaXMgd2lsbCBhdHRlbXB0IHRvIGxpbmsgdGhlIHBhY2thZ2UgYW5kIHRoZW4gcmUtcmVxdWlyZSBpdFxuICpcbiAqIEBwYXJhbSB7c3RyaW5nfSBwYWNrYWdlTmFtZSAtIHRoZSBuYW1lIG9mIHRoZSBwYWNrYWdlIHRvIGJlIHJlcXVpcmVkXG4gKiBAcmV0dXJucyB7UHJvbWlzZTx1bmtub3duPn0gLSB0aGUgcGFja2FnZSBvYmplY3RcbiAqIEB0aHJvd3Mge0Vycm9yfSBJZiB0aGUgcGFja2FnZSBpcyBub3QgZm91bmQgbG9jYWxseSBvciBnbG9iYWxseVxuICovXG5hc3luYyBmdW5jdGlvbiByZXF1aXJlUGFja2FnZSAocGFja2FnZU5hbWUpIHtcbiAgLy8gZmlyc3QsIGdldCBpdCBpbiB0aGUgbm9ybWFsIHdheSAoc2VlIGh0dHBzOi8vbm9kZWpzLm9yZy9hcGkvbW9kdWxlcy5odG1sI21vZHVsZXNfYWxsX3RvZ2V0aGVyKVxuICB0cnkge1xuICAgIGxvZy5kZWJ1ZyhgTG9hZGluZyBsb2NhbCBwYWNrYWdlICcke3BhY2thZ2VOYW1lfSdgKTtcbiAgICByZXR1cm4gcmVxdWlyZShwYWNrYWdlTmFtZSk7XG4gIH0gY2F0Y2ggKGVycikge1xuICAgIGxvZy5kZWJ1ZyhgRmFpbGVkIHRvIGxvYWQgbG9jYWwgcGFja2FnZSAnJHtwYWNrYWdlTmFtZX0nOiAke2Vyci5tZXNzYWdlfWApO1xuICB9XG5cbiAgLy8gc2Vjb25kLCBnZXQgaXQgZnJvbSB3aGVyZSBpdCBvdWdodCB0byBiZSBpbiB0aGUgZ2xvYmFsIG5vZGVfbW9kdWxlc1xuICB0cnkge1xuICAgIGNvbnN0IGdsb2JhbFBhY2thZ2VOYW1lID0gcGF0aC5yZXNvbHZlKFxuICAgICAgcHJvY2Vzcy5lbnYubnBtX2NvbmZpZ19wcmVmaXggPz8gJycsXG4gICAgICAnbGliJyxcbiAgICAgICdub2RlX21vZHVsZXMnLFxuICAgICAgcGFja2FnZU5hbWVcbiAgICApO1xuICAgIGxvZy5kZWJ1ZyhgTG9hZGluZyBnbG9iYWwgcGFja2FnZSAnJHtnbG9iYWxQYWNrYWdlTmFtZX0nYCk7XG4gICAgcmV0dXJuIHJlcXVpcmUoZ2xvYmFsUGFja2FnZU5hbWUpO1xuICB9IGNhdGNoIChlcnIpIHtcbiAgICBsb2cuZGVidWcoYEZhaWxlZCB0byBsb2FkIGdsb2JhbCBwYWNrYWdlICcke3BhY2thZ2VOYW1lfSc6ICR7ZXJyLm1lc3NhZ2V9YCk7XG4gIH1cblxuICAvLyB0aGlyZCwgbGluayB0aGUgZmlsZSBhbmQgZ2V0IGxvY2FsbHlcbiAgdHJ5IHtcbiAgICBhd2FpdCBsaW5rR2xvYmFsUGFja2FnZShwYWNrYWdlTmFtZSk7XG4gICAgbG9nLmRlYnVnKGBSZXRyeWluZyBsb2FkIG9mIGxpbmtlZCBwYWNrYWdlICcke3BhY2thZ2VOYW1lfSdgKTtcbiAgICByZXR1cm4gcmVxdWlyZShwYWNrYWdlTmFtZSk7XG4gIH0gY2F0Y2ggKGVycikge1xuICAgIGxvZy5lcnJvckFuZFRocm93KGBVbmFibGUgdG8gbG9hZCBwYWNrYWdlICcke3BhY2thZ2VOYW1lfSc6ICR7ZXJyLm1lc3NhZ2V9YCk7XG4gIH1cbn1cblxuZnVuY3Rpb24gZXh0cmFjdEFsbFByb3BlcnRpZXMgKG9iaikge1xuICBjb25zdCBzdHJpbmdQcm9wZXJ0aWVzID0gW107XG4gIGZvciAoY29uc3QgcHJvcCBpbiBvYmopIHtcbiAgICBzdHJpbmdQcm9wZXJ0aWVzLnB1c2gocHJvcCk7XG4gIH1cbiAgaWYgKF8uaXNGdW5jdGlvbihPYmplY3QuZ2V0T3duUHJvcGVydHlTeW1ib2xzKSkge1xuICAgIHN0cmluZ1Byb3BlcnRpZXMucHVzaCguLi5PYmplY3QuZ2V0T3duUHJvcGVydHlTeW1ib2xzKG9iaikpO1xuICB9XG4gIHJldHVybiBzdHJpbmdQcm9wZXJ0aWVzO1xufVxuXG5mdW5jdGlvbiBfZ2V0U2l6ZU9mT2JqZWN0IChzZWVuLCBvYmplY3QpIHtcbiAgaWYgKF8uaXNOaWwob2JqZWN0KSkge1xuICAgIHJldHVybiAwO1xuICB9XG5cbiAgbGV0IGJ5dGVzID0gMDtcbiAgY29uc3QgcHJvcGVydGllcyA9IGV4dHJhY3RBbGxQcm9wZXJ0aWVzKG9iamVjdCk7XG4gIGZvciAoY29uc3Qga2V5IG9mIHByb3BlcnRpZXMpIHtcbiAgICAvLyBEbyBub3QgcmVjYWxjdWxhdGUgY2lyY3VsYXIgcmVmZXJlbmNlc1xuICAgIGlmICh0eXBlb2Ygb2JqZWN0W2tleV0gPT09ICdvYmplY3QnICYmICFfLmlzTmlsKG9iamVjdFtrZXldKSkge1xuICAgICAgaWYgKHNlZW4uaGFzKG9iamVjdFtrZXldKSkge1xuICAgICAgICBjb250aW51ZTtcbiAgICAgIH1cbiAgICAgIHNlZW4uYWRkKG9iamVjdFtrZXldKTtcbiAgICB9XG5cbiAgICBieXRlcyArPSBnZXRDYWxjdWxhdG9yKHNlZW4pKGtleSk7XG4gICAgdHJ5IHtcbiAgICAgIGJ5dGVzICs9IGdldENhbGN1bGF0b3Ioc2Vlbikob2JqZWN0W2tleV0pO1xuICAgIH0gY2F0Y2ggKGV4KSB7XG4gICAgICBpZiAoZXggaW5zdGFuY2VvZiBSYW5nZUVycm9yKSB7XG4gICAgICAgIC8vIGNpcmN1bGFyIHJlZmVyZW5jZSBkZXRlY3RlZCwgZmluYWwgcmVzdWx0IG1pZ2h0IGJlIGluY29ycmVjdFxuICAgICAgICAvLyBsZXQncyBiZSBuaWNlIGFuZCBub3QgdGhyb3cgYW4gZXhjZXB0aW9uXG4gICAgICAgIGJ5dGVzID0gMDtcbiAgICAgIH1cbiAgICB9XG4gIH1cblxuICByZXR1cm4gYnl0ZXM7XG59XG5cbmZ1bmN0aW9uIGdldENhbGN1bGF0b3IgKHNlZW4pIHtcbiAgcmV0dXJuIGZ1bmN0aW9uIGNhbGN1bGF0b3IgKG9iaikge1xuICAgIGlmIChfLmlzQnVmZmVyKG9iaikpIHtcbiAgICAgIHJldHVybiBvYmoubGVuZ3RoO1xuICAgIH1cblxuICAgIHN3aXRjaCAodHlwZW9mIG9iaikge1xuICAgICAgY2FzZSAnc3RyaW5nJzpcbiAgICAgICAgcmV0dXJuIG9iai5sZW5ndGggKiBFQ01BX1NJWkVTLlNUUklORztcbiAgICAgIGNhc2UgJ2Jvb2xlYW4nOlxuICAgICAgICByZXR1cm4gRUNNQV9TSVpFUy5CT09MRUFOO1xuICAgICAgY2FzZSAnbnVtYmVyJzpcbiAgICAgICAgcmV0dXJuIEVDTUFfU0laRVMuTlVNQkVSO1xuICAgICAgY2FzZSAnc3ltYm9sJzpcbiAgICAgICAgcmV0dXJuIF8uaXNGdW5jdGlvbihTeW1ib2wua2V5Rm9yKSAmJiBTeW1ib2wua2V5Rm9yKG9iailcbiAgICAgICAgICA/IC8qKiBAdHlwZSB7c3RyaW5nfSAqLyAoU3ltYm9sLmtleUZvcihvYmopKS5sZW5ndGggKiBFQ01BX1NJWkVTLlNUUklOR1xuICAgICAgICAgIDogKG9iai50b1N0cmluZygpLmxlbmd0aCAtIDgpICogRUNNQV9TSVpFUy5TVFJJTkc7XG4gICAgICBjYXNlICdvYmplY3QnOlxuICAgICAgICByZXR1cm4gXy5pc0FycmF5KG9iailcbiAgICAgICAgICA/IG9iai5tYXAoZ2V0Q2FsY3VsYXRvcihzZWVuKSkucmVkdWNlKChhY2MsIGN1cnIpID0+IGFjYyArIGN1cnIsIDApXG4gICAgICAgICAgOiBfZ2V0U2l6ZU9mT2JqZWN0KHNlZW4sIG9iaik7XG4gICAgICBkZWZhdWx0OlxuICAgICAgICByZXR1cm4gMDtcbiAgICB9XG4gIH07XG59XG5cbi8qKlxuICogQ2FsY3VsYXRlIHRoZSBpbi1kZXB0aCBzaXplIGluIG1lbW9yeSBvZiB0aGUgcHJvdmlkZWQgb2JqZWN0LlxuICogVGhlIG9yaWdpbmFsIGltcGxlbWVudGF0aW9uIGlzIGJvcnJvd2VkIGZyb20gaHR0cHM6Ly9naXRodWIuY29tL21pa3RhbS9zaXplb2YuXG4gKlxuICogQHBhcmFtIHsqfSBvYmogQW4gb2JqZWN0IHdob3NlIHNpemUgc2hvdWxkIGJlIGNhbGN1bGF0ZWRcbiAqIEByZXR1cm5zIHtudW1iZXJ9IE9iamVjdCBzaXplIGluIGJ5dGVzLlxuICovXG5mdW5jdGlvbiBnZXRPYmplY3RTaXplIChvYmopIHtcbiAgcmV0dXJuIGdldENhbGN1bGF0b3IobmV3IFdlYWtTZXQoKSkob2JqKTtcbn1cblxuY29uc3QgT0JKRUNUU19NQVBQSU5HID0gbmV3IFdlYWtNYXAoKTtcblxuLyoqXG4gKiBDYWxjdWxhdGVzIGEgdW5pcXVlIG9iamVjdCBpZGVudGlmaWVyXG4gKlxuICogQHBhcmFtIHtvYmplY3R9IG9iamVjdCBBbnkgdmFsaWQgRUNNQSBvYmplY3RcbiAqIEByZXR1cm5zIHtzdHJpbmd9IEEgdXVpZFY0IHN0cmluZyB0aGF0IHVuaXF1ZWx5IGlkZW50aWZpZXMgZ2l2ZW4gb2JqZWN0XG4gKi9cbmZ1bmN0aW9uIGdldE9iamVjdElkIChvYmplY3QpIHtcbiAgaWYgKCFPQkpFQ1RTX01BUFBJTkcuaGFzKG9iamVjdCkpIHtcbiAgICBPQkpFQ1RTX01BUFBJTkcuc2V0KG9iamVjdCwgdXVpZFY0KCkpO1xuICB9XG4gIHJldHVybiBPQkpFQ1RTX01BUFBJTkcuZ2V0KG9iamVjdCk7XG59XG5cbi8qKlxuICogUGVyZm9ybSBkZWVwIGZyZWV6ZSBvZiB0aGUgZ2l2ZW4gb2JqZWN0IChlLiBnLlxuICogYWxsIG5lc3RlZCBvYmplY3RzIGFsc28gYmVjb21lIGltbXV0YWJsZSkuXG4gKiBJZiB0aGUgcGFzc2VkIG9iamVjdCBpcyBvZiBhIHBsYWluIHR5cGVcbiAqIHRoZW4gbm8gY2hhbmdlIGlzIGRvbmUgYW5kIHRoZSBzYW1lIG9iamVjdFxuICogaXMgcmV0dXJuZWQuXG4gKiAhIFRoaXMgZnVuY3Rpb24gY2hhbmdlcyB0aGUgZ2l2ZW4gb2JqZWN0LFxuICogc28gaXQgYmVjb21lcyBpbW11dGFibGUuXG4gKlxuICogQHBhcmFtIHsqfSBvYmplY3QgQW55IHZhbGlkIEVDTUEgb2JqZWN0XG4gKiBAcmV0dXJucyB7Kn0gVGhlIHNhbWUgb2JqZWN0IHRoYXQgd2FzIHBhc3NlZCB0byB0aGVcbiAqIGZ1bmN0aW9uIGFmdGVyIGl0IHdhcyBtYWRlIGltbXV0YWJsZS5cbiAqL1xuZnVuY3Rpb24gZGVlcEZyZWV6ZSAob2JqZWN0KSB7XG4gIGxldCBwcm9wTmFtZXM7XG4gIHRyeSB7XG4gICAgcHJvcE5hbWVzID0gT2JqZWN0LmdldE93blByb3BlcnR5TmFtZXMob2JqZWN0KTtcbiAgfSBjYXRjaCAoaWduKSB7XG4gICAgcmV0dXJuIG9iamVjdDtcbiAgfVxuICBmb3IgKGNvbnN0IG5hbWUgb2YgcHJvcE5hbWVzKSB7XG4gICAgY29uc3QgdmFsdWUgPSBvYmplY3RbbmFtZV07XG4gICAgaWYgKHZhbHVlICYmIHR5cGVvZiB2YWx1ZSA9PT0gJ29iamVjdCcpIHtcbiAgICAgIGRlZXBGcmVlemUodmFsdWUpO1xuICAgIH1cbiAgfVxuICByZXR1cm4gT2JqZWN0LmZyZWV6ZShvYmplY3QpO1xufVxuXG4vKipcbiAqIFRyaWVzIHRvIHN5bmNocm9ub3VzbHkgZGV0ZWN0IHRoZSBhYnNvbHV0ZSBwYXRoIHRvIHRoZSBmb2xkZXJcbiAqIHdoZXJlIHRoZSBnaXZlbiBgbW9kdWxlTmFtZWAgaXMgbG9jYXRlZC5cbiAqXG4gKiBAcGFyYW0ge3N0cmluZ30gbW9kdWxlTmFtZSBUaGUgbmFtZSBvZiB0aGUgbW9kdWxlIGFzIGl0IGlzIHdyaXR0ZW4gaW4gcGFja2FnZS5qc29uXG4gKiBAcGFyYW0ge3N0cmluZ30gZmlsZVBhdGggRnVsbCBwYXRoIHRvIGFueSBvZiBmaWxlcyB0aGF0IGBtb2R1bGVOYW1lYCBjb250YWlucy4gVXNlXG4gKiBgX19maWxlbmFtZWAgdG8gZmluZCB0aGUgcm9vdCBvZiB0aGUgbW9kdWxlIHdoZXJlIHRoaXMgaGVscGVyIGlzIGNhbGxlZC5cbiAqIEByZXR1cm5zIHtzdHJpbmc/fSBGdWxsIHBhdGggdG8gdGhlIG1vZHVsZSByb290XG4gKi9cbmZ1bmN0aW9uIGdldE1vZHVsZVJvb3RTeW5jIChtb2R1bGVOYW1lLCBmaWxlUGF0aCkge1xuICBsZXQgY3VycmVudERpciA9IHBhdGguZGlybmFtZShwYXRoLnJlc29sdmUoZmlsZVBhdGgpKTtcbiAgbGV0IGlzQXRGc1Jvb3QgPSBmYWxzZTtcbiAgd2hpbGUgKCFpc0F0RnNSb290KSB7XG4gICAgY29uc3QgbWFuaWZlc3RQYXRoID0gcGF0aC5qb2luKGN1cnJlbnREaXIsICdwYWNrYWdlLmpzb24nKTtcbiAgICB0cnkge1xuICAgICAgaWYgKF9mcy5leGlzdHNTeW5jKG1hbmlmZXN0UGF0aCkgJiZcbiAgICAgICAgICBKU09OLnBhcnNlKF9mcy5yZWFkRmlsZVN5bmMobWFuaWZlc3RQYXRoLCAndXRmOCcpKS5uYW1lID09PSBtb2R1bGVOYW1lKSB7XG4gICAgICAgIHJldHVybiBjdXJyZW50RGlyO1xuICAgICAgfVxuICAgIH0gY2F0Y2ggKGlnbikge31cbiAgICBjdXJyZW50RGlyID0gcGF0aC5kaXJuYW1lKGN1cnJlbnREaXIpO1xuICAgIGlzQXRGc1Jvb3QgPSBjdXJyZW50RGlyLmxlbmd0aCA8PSBwYXRoLmRpcm5hbWUoY3VycmVudERpcikubGVuZ3RoO1xuICB9XG4gIHJldHVybiBudWxsO1xufVxuXG5leHBvcnQge3JlcXVpcmVQYWNrYWdlLCBnZXRPYmplY3RTaXplLCBnZXRPYmplY3RJZCwgZGVlcEZyZWV6ZSwgZ2V0TW9kdWxlUm9vdFN5bmN9O1xuIl0sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7Ozs7QUFBQSxJQUFBQSxPQUFBLEdBQUFDLE9BQUE7QUFDQSxJQUFBQyxPQUFBLEdBQUFDLHNCQUFBLENBQUFGLE9BQUE7QUFDQSxJQUFBRyxPQUFBLEdBQUFELHNCQUFBLENBQUFGLE9BQUE7QUFDQSxJQUFBSSxXQUFBLEdBQUFKLE9BQUE7QUFDQSxJQUFBSyxLQUFBLEdBQUFILHNCQUFBLENBQUFGLE9BQUE7QUFDQSxJQUFBTSxJQUFBLEdBQUFKLHNCQUFBLENBQUFGLE9BQUE7QUFDQSxJQUFBTyxLQUFBLEdBQUFQLE9BQUE7QUFFQSxNQUFNUSxVQUFVLEdBQUdDLE1BQU0sQ0FBQ0MsTUFBTSxDQUFDO0VBQy9CQyxNQUFNLEVBQUUsQ0FBQztFQUNUQyxPQUFPLEVBQUUsQ0FBQztFQUNWQyxNQUFNLEVBQUU7QUFDVixDQUFDLENBQUM7QUFRRixlQUFlQyxpQkFBaUJBLENBQUVDLFdBQVcsRUFBRTtFQUM3QyxJQUFJO0lBQ0ZDLGVBQUcsQ0FBQ0MsS0FBSyxDQUFFLG9CQUFtQkYsV0FBWSxHQUFFLENBQUM7SUFDN0MsTUFBTUcsR0FBRyxHQUFHLElBQUFDLGlCQUFTLEVBQUMsQ0FBQyxHQUFHLFNBQVMsR0FBRyxLQUFLO0lBQzNDLE1BQU0sSUFBQUMsZ0JBQUksRUFBQ0YsR0FBRyxFQUFFLENBQUMsTUFBTSxFQUFFSCxXQUFXLENBQUMsRUFBRTtNQUFDTSxPQUFPLEVBQUU7SUFBSyxDQUFDLENBQUM7RUFDMUQsQ0FBQyxDQUFDLE9BQU9DLEdBQUcsRUFBRTtJQUNaLE1BQU1DLEdBQUcsR0FBSSwyQkFBMEJSLFdBQVksc0JBQXFCTyxHQUFHLENBQUNFLE9BQVEsRUFBQztJQUNyRlIsZUFBRyxDQUFDQyxLQUFLLENBQUNNLEdBQUcsQ0FBQztJQUNkLElBQUlELEdBQUcsQ0FBQ0csTUFBTSxFQUFFO01B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
+        propNames = Object.getOwnPropertyNames(object);
+    }
+    catch (ign) {
+        return object;
+    }
+    for (const name of propNames) {
+        const value = object[name];
+        if (value && typeof value === 'object') {
+            deepFreeze(value);
+        }
+    }
+    return Object.freeze(object);
+}
+exports.deepFreeze = deepFreeze;
+/**
+ * Tries to synchronously detect the absolute path to the folder
+ * where the given `moduleName` is located.
+ *
+ * @param {string} moduleName The name of the module as it is written in package.json
+ * @param {string} filePath Full path to any of files that `moduleName` contains. Use
+ * `__filename` to find the root of the module where this helper is called.
+ * @returns {string?} Full path to the module root
+ */
+function getModuleRootSync(moduleName, filePath) {
+    let currentDir = path_1.default.dirname(path_1.default.resolve(filePath));
+    let isAtFsRoot = false;
+    while (!isAtFsRoot) {
+        const manifestPath = path_1.default.join(currentDir, 'package.json');
+        try {
+            if (fs_1.default.existsSync(manifestPath) &&
+                JSON.parse(fs_1.default.readFileSync(manifestPath, 'utf8')).name === moduleName) {
+                return currentDir;
+            }
+        }
+        catch (ign) { }
+        currentDir = path_1.default.dirname(currentDir);
+        isAtFsRoot = currentDir.length <= path_1.default.dirname(currentDir).length;
+    }
+    return null;
+}
+exports.getModuleRootSync = getModuleRootSync;
+//# sourceMappingURL=node.js.map

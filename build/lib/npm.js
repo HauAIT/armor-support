@@ -1,194 +1,291 @@
 "use strict";
-
-var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault");
-Object.defineProperty(exports, "__esModule", {
-  value: true
+// @ts-check
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
 });
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.npm = exports.NPM = exports.INSTALL_LOCKFILE_RELATIVE_PATH = exports.CACHE_DIR_RELATIVE_PATH = void 0;
-require("source-map-support/register");
-var _path = _interopRequireDefault(require("path"));
-var _semver = _interopRequireDefault(require("semver"));
-var _env = require("./env");
-var _aitProcess = require("ait-process");
-var _fs = require("./fs");
-var util = _interopRequireWildcard(require("./util"));
-var system = _interopRequireWildcard(require("./system"));
-var _resolveFrom = _interopRequireDefault(require("resolve-from"));
-function _getRequireWildcardCache(e) { if ("function" != typeof WeakMap) return null; var r = new WeakMap(), t = new WeakMap(); return (_getRequireWildcardCache = function (e) { return e ? t : r; })(e); }
-function _interopRequireWildcard(e, r) { if (!r && e && e.__esModule) return e; if (null === e || "object" != typeof e && "function" != typeof e) return { default: e }; var t = _getRequireWildcardCache(r); if (t && t.has(e)) return t.get(e); var n = { __proto__: null }, a = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var u in e) if ("default" !== u && Object.prototype.hasOwnProperty.call(e, u)) { var i = a ? Object.getOwnPropertyDescriptor(e, u) : null; i && (i.get || i.set) ? Object.defineProperty(n, u, i) : n[u] = e[u]; } return n.default = e, t && t.set(e, n), n; }
-const CACHE_DIR_RELATIVE_PATH = exports.CACHE_DIR_RELATIVE_PATH = _path.default.join('node_modules', '.cache', 'armor');
-const INSTALL_LOCKFILE_RELATIVE_PATH = exports.INSTALL_LOCKFILE_RELATIVE_PATH = _path.default.join(CACHE_DIR_RELATIVE_PATH, '.install.lock');
+const path_1 = __importDefault(require("path"));
+const semver_1 = __importDefault(require("semver"));
+const env_1 = require("./env");
+const ait_process_1 = require("ait-process");
+const fs_1 = require("./fs");
+const util = __importStar(require("./util"));
+const system = __importStar(require("./system"));
+const resolve_from_1 = __importDefault(require("resolve-from"));
+/**
+ * Relative path to directory containing any Armor internal files
+ * XXX: this is duplicated in `armor/lib/constants.js`.
+ */
+exports.CACHE_DIR_RELATIVE_PATH = path_1.default.join('node_modules', '.cache', 'armor');
+/**
+ * Relative path to lockfile used when installing an extension via `armor`
+ */
+exports.INSTALL_LOCKFILE_RELATIVE_PATH = path_1.default.join(exports.CACHE_DIR_RELATIVE_PATH, '.install.lock');
+/**
+ * XXX: This should probably be a singleton, but it isn't.  Maybe this module should just export functions?
+ */
 class NPM {
-  _getInstallLockfilePath(cwd) {
-    return _path.default.join(cwd, INSTALL_LOCKFILE_RELATIVE_PATH);
-  }
-  async exec(cmd, args, opts, execOpts = {}) {
-    let {
-      cwd,
-      json,
-      lockFile
-    } = opts;
-    const aitProcessExecOpts = {
-      ...execOpts,
-      cwd
-    };
-    args.unshift(cmd);
-    if (json) {
-      args.push('--json');
+    /**
+     * Returns path to "install" lockfile
+     * @private
+     * @param {string} cwd
+     */
+    _getInstallLockfilePath(cwd) {
+        return path_1.default.join(cwd, exports.INSTALL_LOCKFILE_RELATIVE_PATH);
     }
-    const npmCmd = system.isWindows() ? 'npm.cmd' : 'npm';
-    let runner = async () => await (0, _aitProcess.exec)(npmCmd, args, aitProcessExecOpts);
-    if (lockFile) {
-      const acquireLock = util.getLockFileGuard(lockFile);
-      const _runner = runner;
-      runner = async () => await acquireLock(_runner);
+    /**
+     * Execute `npm` with given args.
+     *
+     * If the process exits with a nonzero code, the contents of `STDOUT` and `STDERR` will be in the
+     * `message` of any rejected error.
+     * @param {string} cmd
+     * @param {string[]} args
+     * @param {ExecOpts} opts
+     * @param {Omit<AITProcessExecOptions, 'cwd'>} [execOpts]
+     */
+    async exec(cmd, args, opts, execOpts = {}) {
+        let { cwd, json, lockFile } = opts;
+        // make sure we perform the current operation in cwd
+        /** @type {AITProcessExecOptions} */
+        const aitProcessExecOpts = { ...execOpts, cwd };
+        args.unshift(cmd);
+        if (json) {
+            args.push('--json');
+        }
+        const npmCmd = system.isWindows() ? 'npm.cmd' : 'npm';
+        let runner = async () => await (0, ait_process_1.exec)(npmCmd, args, aitProcessExecOpts);
+        if (lockFile) {
+            const acquireLock = util.getLockFileGuard(lockFile);
+            const _runner = runner;
+            runner = async () => await acquireLock(_runner);
+        }
+        /** @type {import('ait-process').AITProcessExecResult<string> & {json?: any}} */
+        let ret;
+        try {
+            const { stdout, stderr, code } = await runner();
+            ret = { stdout, stderr, code };
+            // if possible, parse NPM's json output. During NPM install 3rd-party
+            // packages can write to stdout, so sometimes the json output can't be
+            // guaranteed to be parseable
+            try {
+                ret.json = JSON.parse(stdout);
+            }
+            catch (ign) { }
+        }
+        catch (e) {
+            const { stdout = '', stderr = '', code = null, } = /** @type {import('ait-process').ExecError} */ (e);
+            const err = new Error(`npm command '${args.join(' ')}' failed with code ${code}.\n\nSTDOUT:\n${stdout.trim()}\n\nSTDERR:\n${stderr.trim()}`);
+            throw err;
+        }
+        return ret;
     }
-    let ret;
-    try {
-      const {
-        stdout,
-        stderr,
-        code
-      } = await runner();
-      ret = {
-        stdout,
-        stderr,
-        code
-      };
-      try {
-        ret.json = JSON.parse(stdout);
-      } catch (ign) {}
-    } catch (e) {
-      const {
-        stdout = '',
-        stderr = '',
-        code = null
-      } = e;
-      const err = new Error(`npm command '${args.join(' ')}' failed with code ${code}.\n\nSTDOUT:\n${stdout.trim()}\n\nSTDERR:\n${stderr.trim()}`);
-      throw err;
+    /**
+     * @param {string} cwd
+     * @param {string} pkg
+     * @returns {Promise<string?>}
+     */
+    async getLatestVersion(cwd, pkg) {
+        try {
+            return ((await this.exec('view', [pkg, 'dist-tags'], {
+                json: true,
+                cwd,
+            })).json?.latest ?? null);
+        }
+        catch (err) {
+            if (!err?.message.includes('E404')) {
+                throw err;
+            }
+            return null;
+        }
     }
-    return ret;
-  }
-  async getLatestVersion(cwd, pkg) {
-    try {
-      var _await$this$exec$json, _await$this$exec$json2;
-      return (_await$this$exec$json = (_await$this$exec$json2 = (await this.exec('view', [pkg, 'dist-tags'], {
-        json: true,
-        cwd
-      })).json) === null || _await$this$exec$json2 === void 0 ? void 0 : _await$this$exec$json2.latest) !== null && _await$this$exec$json !== void 0 ? _await$this$exec$json : null;
-    } catch (err) {
-      if (!(err !== null && err !== void 0 && err.message.includes('E404'))) {
-        throw err;
-      }
-      return null;
+    /**
+     * @param {string} cwd
+     * @param {string} pkg
+     * @param {string} curVersion
+     * @returns {Promise<string?>}
+     */
+    async getLatestSafeUpgradeVersion(cwd, pkg, curVersion) {
+        try {
+            const allVersions = (await this.exec('view', [pkg, 'versions'], {
+                json: true,
+                cwd,
+            })).json;
+            return this.getLatestSafeUpgradeFromVersions(curVersion, allVersions);
+        }
+        catch (err) {
+            if (!err?.message.includes('E404')) {
+                throw err;
+            }
+            return null;
+        }
     }
-  }
-  async getLatestSafeUpgradeVersion(cwd, pkg, curVersion) {
-    try {
-      const allVersions = (await this.exec('view', [pkg, 'versions'], {
-        json: true,
-        cwd
-      })).json;
-      return this.getLatestSafeUpgradeFromVersions(curVersion, allVersions);
-    } catch (err) {
-      if (!(err !== null && err !== void 0 && err.message.includes('E404'))) {
-        throw err;
-      }
-      return null;
+    /**
+     * Runs `npm ls`, optionally for a particular package.
+     * @param {string} cwd
+     * @param {string} [pkg]
+     */
+    async list(cwd, pkg) {
+        return (await this.exec('list', pkg ? [pkg] : [], { cwd, json: true })).json;
     }
-  }
-  async list(cwd, pkg) {
-    return (await this.exec('list', pkg ? [pkg] : [], {
-      cwd,
-      json: true
-    })).json;
-  }
-  getLatestSafeUpgradeFromVersions(curVersion, allVersions) {
-    var _semver$parse;
-    let safeUpgradeVer = null;
-    const curSemver = (_semver$parse = _semver.default.parse(curVersion)) !== null && _semver$parse !== void 0 ? _semver$parse : _semver.default.parse(_semver.default.coerce(curVersion));
-    if (curSemver === null) {
-      throw new Error(`Could not parse current version '${curVersion}'`);
+    /**
+     * Given a current version and a list of all versions for a package, return the version which is
+     * the highest safely-upgradable version (meaning not crossing any major revision boundaries, and
+     * not including any alpha/beta/rc versions)
+     *
+     * @param {string} curVersion - the current version of a package
+     * @param {Array<string>} allVersions - a list of version strings
+     *
+     * @return {string|null} - the highest safely-upgradable version, or null if there isn't one
+     */
+    getLatestSafeUpgradeFromVersions(curVersion, allVersions) {
+        let safeUpgradeVer = null;
+        const curSemver = semver_1.default.parse(curVersion) ?? semver_1.default.parse(semver_1.default.coerce(curVersion));
+        if (curSemver === null) {
+            throw new Error(`Could not parse current version '${curVersion}'`);
+        }
+        for (const testVer of allVersions) {
+            const testSemver = semver_1.default.parse(testVer) ?? semver_1.default.parse(semver_1.default.coerce(testVer));
+            if (testSemver === null) {
+                continue;
+            }
+            // if the test version is a prerelease, ignore it
+            if (testSemver.prerelease.length > 0) {
+                continue;
+            }
+            // if the current version is later than the test version, skip this test version
+            if (curSemver.compare(testSemver) === 1) {
+                continue;
+            }
+            // if the test version is newer, but crosses a major revision boundary, also skip it
+            if (testSemver.major > curSemver.major) {
+                continue;
+            }
+            // otherwise this version is safe to upgrade to. But there might be multiple ones of this
+            // kind, so keep iterating and keeping the highest
+            if (safeUpgradeVer === null || testSemver.compare(safeUpgradeVer) === 1) {
+                safeUpgradeVer = testSemver;
+            }
+        }
+        if (safeUpgradeVer) {
+            safeUpgradeVer = safeUpgradeVer.format();
+        }
+        return safeUpgradeVer;
     }
-    for (const testVer of allVersions) {
-      var _semver$parse2;
-      const testSemver = (_semver$parse2 = _semver.default.parse(testVer)) !== null && _semver$parse2 !== void 0 ? _semver$parse2 : _semver.default.parse(_semver.default.coerce(testVer));
-      if (testSemver === null) {
-        continue;
-      }
-      if (testSemver.prerelease.length > 0) {
-        continue;
-      }
-      if (curSemver.compare(testSemver) === 1) {
-        continue;
-      }
-      if (testSemver.major > curSemver.major) {
-        continue;
-      }
-      if (safeUpgradeVer === null || testSemver.compare(safeUpgradeVer) === 1) {
-        safeUpgradeVer = testSemver;
-      }
+    /**
+     * Installs a package w/ `npm`
+     * @param {string} cwd
+     * @param {string} pkgName
+     * @param {InstallPackageOpts} opts
+     * @returns {Promise<NpmInstallReceipt>}
+     */
+    async installPackage(cwd, pkgName, { pkgVer, installType } = {}) {
+        /** @type {any} */
+        let dummyPkgJson;
+        const dummyPkgPath = path_1.default.join(cwd, 'package.json');
+        try {
+            dummyPkgJson = JSON.parse(await fs_1.fs.readFile(dummyPkgPath, 'utf8'));
+        }
+        catch (err) {
+            if (err.code === 'ENOENT') {
+                dummyPkgJson = {};
+                await fs_1.fs.writeFile(dummyPkgPath, JSON.stringify(dummyPkgJson, null, 2), 'utf8');
+            }
+            else {
+                throw err;
+            }
+        }
+        const installOpts = ['--save-dev'];
+        if (!(await (0, env_1.hasArmorDependency)(cwd))) {
+            if (process.env.ARMOR_OMIT_PEER_DEPS) {
+                installOpts.push('--omit=peer');
+            }
+            installOpts.push('--save-exact', '--global-style', '--no-package-lock');
+        }
+        const cmd = installType === 'local' ? 'link' : 'install';
+        const res = await this.exec(cmd, [...installOpts, pkgVer ? `${pkgName}@${pkgVer}` : pkgName], {
+            cwd,
+            json: true,
+            lockFile: this._getInstallLockfilePath(cwd),
+        });
+        if (res.json) {
+            // we parsed a valid json response, so if we got an error here, return that
+            // message straightaway
+            if (res.json.error) {
+                throw new Error(res.json.error);
+            }
+        }
+        // Now read package data from the installed package to return, and make sure
+        // everything got installed ok. Remember, pkgName might end up with a / in it due to an npm
+        // org, so if so, that will get correctly exploded into multiple directories, by path.resolve here
+        // (even on Windows!)
+        const pkgJsonPath = (0, resolve_from_1.default)(cwd, `${pkgName}/package.json`);
+        try {
+            const pkgJson = await fs_1.fs.readFile(pkgJsonPath, 'utf8');
+            const pkg = JSON.parse(pkgJson);
+            return { installPath: path_1.default.dirname(pkgJsonPath), pkg };
+        }
+        catch {
+            throw new Error('The package was not downloaded correctly; its package.json ' +
+                'did not exist or was unreadable. We looked for it at ' +
+                pkgJsonPath);
+        }
     }
-    if (safeUpgradeVer) {
-      safeUpgradeVer = safeUpgradeVer.format();
+    /**
+     * @param {string} cwd
+     * @param {string} pkg
+     */
+    async uninstallPackage(cwd, pkg) {
+        await this.exec('uninstall', [pkg], {
+            cwd,
+            lockFile: this._getInstallLockfilePath(cwd),
+        });
     }
-    return safeUpgradeVer;
-  }
-  async installPackage(cwd, pkgName, {
-    pkgVer,
-    installType
-  } = {}) {
-    let dummyPkgJson;
-    const dummyPkgPath = _path.default.join(cwd, 'package.json');
-    try {
-      dummyPkgJson = JSON.parse(await _fs.fs.readFile(dummyPkgPath, 'utf8'));
-    } catch (err) {
-      if (err.code === 'ENOENT') {
-        dummyPkgJson = {};
-        await _fs.fs.writeFile(dummyPkgPath, JSON.stringify(dummyPkgJson, null, 2), 'utf8');
-      } else {
-        throw err;
-      }
-    }
-    const installOpts = ['--save-dev'];
-    if (!(await (0, _env.hasArmorDependency)(cwd))) {
-      if (process.env.ARMOR_OMIT_PEER_DEPS) {
-        installOpts.push('--omit=peer');
-      }
-      installOpts.push('--save-exact', '--global-style', '--no-package-lock');
-    }
-    const cmd = installType === 'local' ? 'link' : 'install';
-    const res = await this.exec(cmd, [...installOpts, pkgVer ? `${pkgName}@${pkgVer}` : pkgName], {
-      cwd,
-      json: true,
-      lockFile: this._getInstallLockfilePath(cwd)
-    });
-    if (res.json) {
-      if (res.json.error) {
-        throw new Error(res.json.error);
-      }
-    }
-    const pkgJsonPath = (0, _resolveFrom.default)(cwd, `${pkgName}/package.json`);
-    try {
-      const pkgJson = await _fs.fs.readFile(pkgJsonPath, 'utf8');
-      const pkg = JSON.parse(pkgJson);
-      return {
-        installPath: _path.default.dirname(pkgJsonPath),
-        pkg
-      };
-    } catch {
-      throw new Error('The package was not downloaded correctly; its package.json ' + 'did not exist or was unreadable. We looked for it at ' + pkgJsonPath);
-    }
-  }
-  async uninstallPackage(cwd, pkg) {
-    await this.exec('uninstall', [pkg], {
-      cwd,
-      lockFile: this._getInstallLockfilePath(cwd)
-    });
-  }
 }
 exports.NPM = NPM;
-const npm = exports.npm = new NPM();require('source-map-support').install();
-
-
-//# sourceMappingURL=data:application/json;charset=utf8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoibGliL25wbS5qcyIsIm5hbWVzIjpbIl9wYXRoIiwiX2ludGVyb3BSZXF1aXJlRGVmYXVsdCIsInJlcXVpcmUiLCJfc2VtdmVyIiwiX2VudiIsIl9haXRQcm9jZXNzIiwiX2ZzIiwidXRpbCIsIl9pbnRlcm9wUmVxdWlyZVdpbGRjYXJkIiwic3lzdGVtIiwiX3Jlc29sdmVGcm9tIiwiX2dldFJlcXVpcmVXaWxkY2FyZENhY2hlIiwiZSIsIldlYWtNYXAiLCJyIiwidCIsIl9fZXNNb2R1bGUiLCJkZWZhdWx0IiwiaGFzIiwiZ2V0IiwibiIsIl9fcHJvdG9fXyIsImEiLCJPYmplY3QiLCJkZWZpbmVQcm9wZXJ0eSIsImdldE93blByb3BlcnR5RGVzY3JpcHRvciIsInUiLCJwcm90b3R5cGUiLCJoYXNPd25Qcm9wZXJ0eSIsImNhbGwiLCJpIiwic2V0IiwiQ0FDSEVfRElSX1JFTEFUSVZFX1BBVEgiLCJleHBvcnRzIiwicGF0aCIsImpvaW4iLCJJTlNUQUxMX0xPQ0tGSUxFX1JFTEFUSVZFX1BBVEgiLCJOUE0iLCJfZ2V0SW5zdGFsbExvY2tmaWxlUGF0aCIsImN3ZCIsImV4ZWMiLCJjbWQiLCJhcmdzIiwib3B0cyIsImV4ZWNPcHRzIiwianNvbiIsImxvY2tGaWxlIiwiYWl0UHJvY2Vzc0V4ZWNPcHRzIiwidW5zaGlmdCIsInB1c2giLCJucG1DbWQiLCJpc1dpbmRvd3MiLCJydW5uZXIiLCJhY3F1aXJlTG9jayIsImdldExvY2tGaWxlR3VhcmQiLCJfcnVubmVyIiwicmV0Iiwic3Rkb3V0Iiwic3RkZXJyIiwiY29kZSIsIkpTT04iLCJwYXJzZSIsImlnbiIsImVyciIsIkVycm9yIiwidHJpbSIsImdldExhdGVzdFZlcnNpb24iLCJwa2ciLCJfYXdhaXQkdGhpcyRleGVjJGpzb24iLCJfYXdhaXQkdGhpcyRleGVjJGpzb24yIiwibGF0ZXN0IiwibWVzc2FnZSIsImluY2x1ZGVzIiwiZ2V0TGF0ZXN0U2FmZVVwZ3JhZGVWZXJzaW9uIiwiY3VyVmVyc2lvbiIsImFsbFZlcnNpb25zIiwiZ2V0TGF0ZXN0U2FmZVVwZ3JhZGVGcm9tVmVyc2lvbnMiLCJsaXN0IiwiX3NlbXZlciRwYXJzZSIsInNhZmVVcGdyYWRlVmVyIiwiY3VyU2VtdmVyIiwic2VtdmVyIiwiY29lcmNlIiwidGVzdFZlciIsIl9zZW12ZXIkcGFyc2UyIiwidGVzdFNlbXZlciIsInByZXJlbGVhc2UiLCJsZW5ndGgiLCJjb21wYXJlIiwibWFqb3IiLCJmb3JtYXQiLCJpbnN0YWxsUGFja2FnZSIsInBrZ05hbWUiLCJwa2dWZXIiLCJpbnN0YWxsVHlwZSIsImR1bW15UGtnSnNvbiIsImR1bW15UGtnUGF0aCIsImZzIiwicmVhZEZpbGUiLCJ3cml0ZUZpbGUiLCJzdHJpbmdpZnkiLCJpbnN0YWxsT3B0cyIsImhhc0FybW9yRGVwZW5kZW5jeSIsInByb2Nlc3MiLCJlbnYiLCJBUk1PUl9PTUlUX1BFRVJfREVQUyIsInJlcyIsImVycm9yIiwicGtnSnNvblBhdGgiLCJyZXNvbHZlRnJvbSIsInBrZ0pzb24iLCJpbnN0YWxsUGF0aCIsImRpcm5hbWUiLCJ1bmluc3RhbGxQYWNrYWdlIiwibnBtIl0sInNvdXJjZVJvb3QiOiIuLi8uLiIsInNvdXJjZXMiOlsibGliL25wbS5qcyJdLCJzb3VyY2VzQ29udGVudCI6WyIvLyBAdHMtY2hlY2tcblxuaW1wb3J0IHBhdGggZnJvbSAncGF0aCc7XG5pbXBvcnQgc2VtdmVyIGZyb20gJ3NlbXZlcic7XG5pbXBvcnQge2hhc0FybW9yRGVwZW5kZW5jeX0gZnJvbSAnLi9lbnYnO1xuaW1wb3J0IHtleGVjfSBmcm9tICdhaXQtcHJvY2Vzcyc7XG5pbXBvcnQge2ZzfSBmcm9tICcuL2ZzJztcbmltcG9ydCAqIGFzIHV0aWwgZnJvbSAnLi91dGlsJztcbmltcG9ydCAqIGFzIHN5c3RlbSBmcm9tICcuL3N5c3RlbSc7XG5pbXBvcnQgcmVzb2x2ZUZyb20gZnJvbSAncmVzb2x2ZS1mcm9tJztcblxuLyoqXG4gKiBSZWxhdGl2ZSBwYXRoIHRvIGRpcmVjdG9yeSBjb250YWluaW5nIGFueSBBcm1vciBpbnRlcm5hbCBmaWxlc1xuICogWFhYOiB0aGlzIGlzIGR1cGxpY2F0ZWQgaW4gYGFybW9yL2xpYi9jb25zdGFudHMuanNgLlxuICovXG5leHBvcnQgY29uc3QgQ0FDSEVfRElSX1JFTEFUSVZFX1BBVEggPSBwYXRoLmpvaW4oJ25vZGVfbW9kdWxlcycsICcuY2FjaGUnLCAnYXJtb3InKTtcblxuLyoqXG4gKiBSZWxhdGl2ZSBwYXRoIHRvIGxvY2tmaWxlIHVzZWQgd2hlbiBpbnN0YWxsaW5nIGFuIGV4dGVuc2lvbiB2aWEgYGFybW9yYFxuICovXG5leHBvcnQgY29uc3QgSU5TVEFMTF9MT0NLRklMRV9SRUxBVElWRV9QQVRIID0gcGF0aC5qb2luKENBQ0hFX0RJUl9SRUxBVElWRV9QQVRILCAnLmluc3RhbGwubG9jaycpO1xuXG4vKipcbiAqIFhYWDogVGhpcyBzaG91bGQgcHJvYmFibHkgYmUgYSBzaW5nbGV0b24sIGJ1dCBpdCBpc24ndC4gIE1heWJlIHRoaXMgbW9kdWxlIHNob3VsZCBqdXN0IGV4cG9ydCBmdW5jdGlvbnM/XG4gKi9cbmV4cG9ydCBjbGFzcyBOUE0ge1xuICAvKipcbiAgICogUmV0dXJucyBwYXRoIHRvIFwiaW5zdGFsbFwiIGxvY2tmaWxlXG4gICAqIEBwcml2YXRlXG4gICAqIEBwYXJhbSB7c3RyaW5nfSBjd2RcbiAgICovXG4gIF9nZXRJbnN0YWxsTG9ja2ZpbGVQYXRoIChjd2QpIHtcbiAgICByZXR1cm4gcGF0aC5qb2luKGN3ZCwgSU5TVEFMTF9MT0NLRklMRV9SRUxBVElWRV9QQVRIKTtcbiAgfVxuXG4gIC8qKlxuICAgKiBFeGVjdXRlIGBucG1gIHdpdGggZ2l2ZW4gYXJncy5cbiAgICpcbiAgICogSWYgdGhlIHByb2Nlc3MgZXhpdHMgd2l0aCBhIG5vbnplcm8gY29kZSwgdGhlIGNvbnRlbnRzIG9mIGBTVERPVVRgIGFuZCBgU1RERVJSYCB3aWxsIGJlIGluIHRoZVxuICAgKiBgbWVzc2FnZWAgb2YgYW55IHJlamVjdGVkIGVycm9yLlxuICAgKiBAcGFyYW0ge3N0cmluZ30gY21kXG4gICAqIEBwYXJhbSB7c3RyaW5nW119IGFyZ3NcbiAgICogQHBhcmFtIHtFeGVjT3B0c30gb3B0c1xuICAgKiBAcGFyYW0ge09taXQ8QUlUUHJvY2Vzc0V4ZWNPcHRpb25zLCAnY3dkJz59IFtleGVjT3B0c11cbiAgICovXG4gIGFzeW5jIGV4ZWMgKGNtZCwgYXJncywgb3B0cywgZXhlY09wdHMgPSB7fSkge1xuICAgIGxldCB7Y3dkLCBqc29uLCBsb2NrRmlsZX0gPSBvcHRzO1xuXG4gICAgLy8gbWFrZSBzdXJlIHdlIHBlcmZvcm0gdGhlIGN1cnJlbnQgb3BlcmF0aW9uIGluIGN3ZFxuICAgIC8qKiBAdHlwZSB7QUlUUHJvY2Vzc0V4ZWNPcHRpb25zfSAqL1xuICAgIGNvbnN0IGFpdFByb2Nlc3NFeGVjT3B0cyA9IHsuLi5leGVjT3B0cywgY3dkfTtcblxuICAgIGFyZ3MudW5zaGlmdChjbWQpO1xuICAgIGlmIChqc29uKSB7XG4gICAgICBhcmdzLnB1c2goJy0tanNvbicpO1xuICAgIH1cbiAgICBjb25zdCBucG1DbWQgPSBzeXN0ZW0uaXNXaW5kb3dzKCkgPyAnbnBtLmNtZCcgOiAnbnBtJztcbiAgICBsZXQgcnVubmVyID0gYXN5bmMgKCkgPT4gYXdhaXQgZXhlYyhucG1DbWQsIGFyZ3MsIGFpdFByb2Nlc3NFeGVjT3B0cyk7XG4gICAgaWYgKGxvY2tGaWxlKSB7XG4gICAgICBjb25zdCBhY3F1aXJlTG9jayA9IHV0aWwuZ2V0TG9ja0ZpbGVHdWFyZChsb2NrRmlsZSk7XG4gICAgICBjb25zdCBfcnVubmVyID0gcnVubmVyO1xuICAgICAgcnVubmVyID0gYXN5bmMgKCkgPT4gYXdhaXQgYWNxdWlyZUxvY2soX3J1bm5lcik7XG4gICAgfVxuXG4gICAgLyoqIEB0eXBlIHtpbXBvcnQoJ2FpdC1wcm9jZXNzJykuQUlUUHJvY2Vzc0V4ZWNSZXN1bHQ8c3RyaW5nPiAmIHtqc29uPzogYW55fX0gKi9cbiAgICBsZXQgcmV0O1xuICAgIHRyeSB7XG4gICAgICBjb25zdCB7c3Rkb3V0LCBzdGRlcnIsIGNvZGV9ID0gYXdhaXQgcnVubmVyKCk7XG4gICAgICByZXQgPSB7c3Rkb3V0LCBzdGRlcnIsIGNvZGV9O1xuICAgICAgLy8gaWYgcG9zc2libGUsIHBhcnNlIE5QTSdzIGpzb24gb3V0cHV0LiBEdXJpbmcgTlBNIGluc3RhbGwgM3JkLXBhcnR5XG4gICAgICAvLyBwYWNrYWdlcyBjYW4gd3JpdGUgdG8gc3Rkb3V0LCBzbyBzb21ldGltZXMgdGhlIGpzb24gb3V0cHV0IGNhbid0IGJlXG4gICAgICAvLyBndWFyYW50ZWVkIHRvIGJlIHBhcnNlYWJsZVxuICAgICAgdHJ5IHtcbiAgICAgICAgcmV0Lmpzb24gPSBKU09OLnBhcnNlKHN0ZG91dCk7XG4gICAgICB9IGNhdGNoIChpZ24pIHt9XG4gICAgfSBjYXRjaCAoZSkge1xuICAgICAgY29uc3Qge1xuICAgICAgICBzdGRvdXQgPSAnJyxcbiAgICAgICAgc3RkZXJyID0gJycsXG4gICAgICAgIGNvZGUgPSBudWxsLFxuICAgICAgfSA9IC8qKiBAdHlwZSB7aW1wb3J0KCdhaXQtcHJvY2VzcycpLkV4ZWNFcnJvcn0gKi8gKGUpO1xuICAgICAgY29uc3QgZXJyID0gbmV3IEVycm9yKFxuICAgICAgICBgbnBtIGNvbW1hbmQgJyR7YXJncy5qb2luKFxuICAgICAgICAgICcgJ1xuICAgICAgICApfScgZmFpbGVkIHdpdGggY29kZSAke2NvZGV9LlxcblxcblNURE9VVDpcXG4ke3N0ZG91dC50cmltKCl9XFxuXFxuU1RERVJSOlxcbiR7c3RkZXJyLnRyaW0oKX1gXG4gICAgICApO1xuICAgICAgdGhyb3cgZXJyO1xuICAgIH1cbiAgICByZXR1cm4gcmV0O1xuICB9XG5cbiAgLyoqXG4gICAqIEBwYXJhbSB7c3RyaW5nfSBjd2RcbiAgICogQHBhcmFtIHtzdHJpbmd9IHBrZ1xuICAgKiBAcmV0dXJucyB7UHJvbWlzZTxzdHJpbmc/Pn1cbiAgICovXG4gIGFzeW5jIGdldExhdGVzdFZlcnNpb24gKGN3ZCwgcGtnKSB7XG4gICAgdHJ5IHtcbiAgICAgIHJldHVybiAoXG4gICAgICAgIChcbiAgICAgICAgICBhd2FpdCB0aGlzLmV4ZWMoJ3ZpZXcnLCBbcGtnLCAnZGlzdC10YWdzJ10sIHtcbiAgICAgICAgICAgIGpzb246IHRydWUsXG4gICAgICAgICAgICBjd2QsXG4gICAgICAgICAgfSlcbiAgICAgICAgKS5qc29uPy5sYXRlc3QgPz8gbnVsbFxuICAgICAgKTtcbiAgICB9IGNhdGNoIChlcnIpIHtcbiAgICAgIGlmICghZXJyPy5tZXNzYWdlLmluY2x1ZGVzKCdFNDA0JykpIHtcbiAgICAgICAgdGhyb3cgZXJyO1xuICAgICAgfVxuICAgICAgcmV0dXJuIG51bGw7XG4gICAgfVxuICB9XG5cbiAgLyoqXG4gICAqIEBwYXJhbSB7c3RyaW5nfSBjd2RcbiAgICogQHBhcmFtIHtzdHJpbmd9IHBrZ1xuICAgKiBAcGFyYW0ge3N0cmluZ30gY3VyVmVyc2lvblxuICAgKiBAcmV0dXJucyB7UHJvbWlzZTxzdHJpbmc/Pn1cbiAgICovXG4gIGFzeW5jIGdldExhdGVzdFNhZmVVcGdyYWRlVmVyc2lvbiAoY3dkLCBwa2csIGN1clZlcnNpb24pIHtcbiAgICB0cnkge1xuICAgICAgY29uc3QgYWxsVmVyc2lvbnMgPSAoXG4gICAgICAgIGF3YWl0IHRoaXMuZXhlYygndmlldycsIFtwa2csICd2ZXJzaW9ucyddLCB7XG4gICAgICAgICAganNvbjogdHJ1ZSxcbiAgICAgICAgICBjd2QsXG4gICAgICAgIH0pXG4gICAgICApLmpzb247XG4gICAgICByZXR1cm4gdGhpcy5nZXRMYXRlc3RTYWZlVXBncmFkZUZyb21WZXJzaW9ucyhjdXJWZXJzaW9uLCBhbGxWZXJzaW9ucyk7XG4gICAgfSBjYXRjaCAoZXJyKSB7XG4gICAgICBpZiAoIWVycj8ubWVzc2FnZS5pbmNsdWRlcygnRTQwNCcpKSB7XG4gICAgICAgIHRocm93IGVycjtcbiAgICAgIH1cbiAgICAgIHJldHVybiBudWxsO1xuICAgIH1cbiAgfVxuXG4gIC8qKlxuICAgKiBSdW5zIGBucG0gbHNgLCBvcHRpb25hbGx5IGZvciBhIHBhcnRpY3VsYXIgcGFja2FnZS5cbiAgICogQHBhcmFtIHtzdHJpbmd9IGN3ZFxuICAgKiBAcGFyYW0ge3N0cmluZ30gW3BrZ11cbiAgICovXG4gIGFzeW5jIGxpc3QgKGN3ZCwgcGtnKSB7XG4gICAgcmV0dXJuIChhd2FpdCB0aGlzLmV4ZWMoJ2xpc3QnLCBwa2cgPyBbcGtnXSA6IFtdLCB7Y3dkLCBqc29uOiB0cnVlfSkpLmpzb247XG4gIH1cblxuICAvKipcbiAgICogR2l2ZW4gYSBjdXJyZW50IHZlcnNpb24gYW5kIGEgbGlzdCBvZiBhbGwgdmVyc2lvbnMgZm9yIGEgcGFja2FnZSwgcmV0dXJuIHRoZSB2ZXJzaW9uIHdoaWNoIGlzXG4gICAqIHRoZSBoaWdoZXN0IHNhZmVseS11cGdyYWRhYmxlIHZlcnNpb24gKG1lYW5pbmcgbm90IGNyb3NzaW5nIGFueSBtYWpvciByZXZpc2lvbiBib3VuZGFyaWVzLCBhbmRcbiAgICogbm90IGluY2x1ZGluZyBhbnkgYWxwaGEvYmV0YS9yYyB2ZXJzaW9ucylcbiAgICpcbiAgICogQHBhcmFtIHtzdHJpbmd9IGN1clZlcnNpb24gLSB0aGUgY3VycmVudCB2ZXJzaW9uIG9mIGEgcGFja2FnZVxuICAgKiBAcGFyYW0ge0FycmF5PHN0cmluZz59IGFsbFZlcnNpb25zIC0gYSBsaXN0IG9mIHZlcnNpb24gc3RyaW5nc1xuICAgKlxuICAgKiBAcmV0dXJuIHtzdHJpbmd8bnVsbH0gLSB0aGUgaGlnaGVzdCBzYWZlbHktdXBncmFkYWJsZSB2ZXJzaW9uLCBvciBudWxsIGlmIHRoZXJlIGlzbid0IG9uZVxuICAgKi9cbiAgZ2V0TGF0ZXN0U2FmZVVwZ3JhZGVGcm9tVmVyc2lvbnMgKGN1clZlcnNpb24sIGFsbFZlcnNpb25zKSB7XG4gICAgbGV0IHNhZmVVcGdyYWRlVmVyID0gbnVsbDtcbiAgICBjb25zdCBjdXJTZW12ZXIgPSBzZW12ZXIucGFyc2UoY3VyVmVyc2lvbikgPz8gc2VtdmVyLnBhcnNlKHNlbXZlci5jb2VyY2UoY3VyVmVyc2lvbikpO1xuICAgIGlmIChjdXJTZW12ZXIgPT09IG51bGwpIHtcbiAgICAgIHRocm93IG5ldyBFcnJvcihgQ291bGQgbm90IHBhcnNlIGN1cnJlbnQgdmVyc2lvbiAnJHtjdXJWZXJzaW9ufSdgKTtcbiAgICB9XG4gICAgZm9yIChjb25zdCB0ZXN0VmVyIG9mIGFsbFZlcnNpb25zKSB7XG4gICAgICBjb25zdCB0ZXN0U2VtdmVyID0gc2VtdmVyLnBhcnNlKHRlc3RWZXIpID8/IHNlbXZlci5wYXJzZShzZW12ZXIuY29lcmNlKHRlc3RWZXIpKTtcbiAgICAgIGlmICh0ZXN0U2VtdmVyID09PSBudWxsKSB7XG4gICAgICAgIGNvbnRpbnVlO1xuICAgICAgfVxuICAgICAgLy8gaWYgdGhlIHRlc3QgdmVyc2lvbiBpcyBhIHByZXJlbGVhc2UsIGlnbm9yZSBpdFxuICAgICAgaWYgKHRlc3RTZW12ZXIucHJlcmVsZWFzZS5sZW5ndGggPiAwKSB7XG4gICAgICAgIGNvbnRpbnVlO1xuICAgICAgfVxuICAgICAgLy8gaWYgdGhlIGN1cnJlbnQgdmVyc2lvbiBpcyBsYXRlciB0aGFuIHRoZSB0ZXN0IHZlcnNpb24sIHNraXAgdGhpcyB0ZXN0IHZlcnNpb25cbiAgICAgIGlmIChjdXJTZW12ZXIuY29tcGFyZSh0ZXN0U2VtdmVyKSA9PT0gMSkge1xuICAgICAgICBjb250aW51ZTtcbiAgICAgIH1cbiAgICAgIC8vIGlmIHRoZSB0ZXN0IHZlcnNpb24gaXMgbmV3ZXIsIGJ1dCBjcm9zc2VzIGEgbWFqb3IgcmV2aXNpb24gYm91bmRhcnksIGFsc28gc2tpcCBpdFxuICAgICAgaWYgKHRlc3RTZW12ZXIubWFqb3IgPiBjdXJTZW12ZXIubWFqb3IpIHtcbiAgICAgICAgY29udGludWU7XG4gICAgICB9XG4gICAgICAvLyBvdGhlcndpc2UgdGhpcyB2ZXJzaW9uIGlzIHNhZmUgdG8gdXBncmFkZSB0by4gQnV0IHRoZXJlIG1pZ2h0IGJlIG11bHRpcGxlIG9uZXMgb2YgdGhpc1xuICAgICAgLy8ga2luZCwgc28ga2VlcCBpdGVyYXRpbmcgYW5kIGtlZXBpbmcgdGhlIGhpZ2hlc3RcbiAgICAgIGlmIChzYWZlVXBncmFkZVZlciA9PT0gbnVsbCB8fCB0ZXN0U2VtdmVyLmNvbXBhcmUoc2FmZVVwZ3JhZGVWZXIpID09PSAxKSB7XG4gICAgICAgIHNhZmVVcGdyYWRlVmVyID0gdGVzdFNlbXZlcjtcbiAgICAgIH1cbiAgICB9XG4gICAgaWYgKHNhZmVVcGdyYWRlVmVyKSB7XG4gICAgICBzYWZlVXBncmFkZVZlciA9IHNhZmVVcGdyYWRlVmVyLmZvcm1hdCgpO1xuICAgIH1cbiAgICByZXR1cm4gc2FmZVVwZ3JhZGVWZXI7XG4gIH1cblxuICAvKipcbiAgICogSW5zdGFsbHMgYSBwYWNrYWdlIHcvIGBucG1gXG4gICAqIEBwYXJhbSB7c3RyaW5nfSBjd2RcbiAgICogQHBhcmFtIHtzdHJpbmd9IHBrZ05hbWVcbiAgICogQHBhcmFtIHtJbnN0YWxsUGFja2FnZU9wdHN9IG9wdHNcbiAgICogQHJldHVybnMge1Byb21pc2U8TnBtSW5zdGFsbFJlY2VpcHQ+fVxuICAgKi9cbiAgYXN5bmMgaW5zdGFsbFBhY2thZ2UgKGN3ZCwgcGtnTmFtZSwge3BrZ1ZlciwgaW5zdGFsbFR5cGV9ID0ge30pIHtcbiAgICAvKiogQHR5cGUge2FueX0gKi9cbiAgICBsZXQgZHVtbXlQa2dKc29uO1xuICAgIGNvbnN0IGR1bW15UGtnUGF0aCA9IHBhdGguam9pbihjd2QsICdwYWNrYWdlLmpzb24nKTtcbiAgICB0cnkge1xuICAgICAgZHVtbXlQa2dKc29uID0gSlNPTi5wYXJzZShhd2FpdCBmcy5yZWFkRmlsZShkdW1teVBrZ1BhdGgsICd1dGY4JykpO1xuICAgIH0gY2F0Y2ggKGVycikge1xuICAgICAgaWYgKGVyci5jb2RlID09PSAnRU5PRU5UJykge1xuICAgICAgICBkdW1teVBrZ0pzb24gPSB7fTtcbiAgICAgICAgYXdhaXQgZnMud3JpdGVGaWxlKGR1bW15UGtnUGF0aCwgSlNPTi5zdHJpbmdpZnkoZHVtbXlQa2dKc29uLCBudWxsLCAyKSwgJ3V0ZjgnKTtcbiAgICAgIH0gZWxzZSB7XG4gICAgICAgIHRocm93IGVycjtcbiAgICAgIH1cbiAgICB9XG5cbiAgICBjb25zdCBpbnN0YWxsT3B0cyA9IFsnLS1zYXZlLWRldiddO1xuICAgIGlmICghKGF3YWl0IGhhc0FybW9yRGVwZW5kZW5jeShjd2QpKSkge1xuICAgICAgaWYgKHByb2Nlc3MuZW52LkFSTU9SX09NSVRfUEVFUl9ERVBTKSB7XG4gICAgICAgIGluc3RhbGxPcHRzLnB1c2goJy0tb21pdD1wZWVyJyk7XG4gICAgICB9XG4gICAgICBpbnN0YWxsT3B0cy5wdXNoKCctLXNhdmUtZXhhY3QnLCAnLS1nbG9iYWwtc3R5bGUnLCAnLS1uby1wYWNrYWdlLWxvY2snKTtcbiAgICB9XG5cbiAgICBjb25zdCBjbWQgPSBpbnN0YWxsVHlwZSA9PT0gJ2xvY2FsJyA/ICdsaW5rJyA6ICdpbnN0YWxsJztcbiAgICBjb25zdCByZXMgPSBhd2FpdCB0aGlzLmV4ZWMoY21kLCBbLi4uaW5zdGFsbE9wdHMsIHBrZ1ZlciA/IGAke3BrZ05hbWV9QCR7cGtnVmVyfWAgOiBwa2dOYW1lXSwge1xuICAgICAgY3dkLFxuICAgICAganNvbjogdHJ1ZSxcbiAgICAgIGxvY2tGaWxlOiB0aGlzLl9nZXRJbnN0YWxsTG9ja2ZpbGVQYXRoKGN3ZCksXG4gICAgfSk7XG5cbiAgICBpZiAocmVzLmpzb24pIHtcbiAgICAgIC8vIHdlIHBhcnNlZCBhIHZhbGlkIGpzb24gcmVzcG9uc2UsIHNvIGlmIHdlIGdvdCBhbiBlcnJvciBoZXJlLCByZXR1cm4gdGhhdFxuICAgICAgLy8gbWVzc2FnZSBzdHJhaWdodGF3YXlcbiAgICAgIGlmIChyZXMuanNvbi5lcnJvcikge1xuICAgICAgICB0aHJvdyBuZXcgRXJyb3IocmVzLmpzb24uZXJyb3IpO1xuICAgICAgfVxuICAgIH1cblxuICAgIC8vIE5vdyByZWFkIHBhY2thZ2UgZGF0YSBmcm9tIHRoZSBpbnN0YWxsZWQgcGFja2FnZSB0byByZXR1cm4sIGFuZCBtYWtlIHN1cmVcbiAgICAvLyBldmVyeXRoaW5nIGdvdCBpbnN0YWxsZWQgb2suIFJlbWVtYmVyLCBwa2dOYW1lIG1pZ2h0IGVuZCB1cCB3aXRoIGEgLyBpbiBpdCBkdWUgdG8gYW4gbnBtXG4gICAgLy8gb3JnLCBzbyBpZiBzbywgdGhhdCB3aWxsIGdldCBjb3JyZWN0bHkgZXhwbG9kZWQgaW50byBtdWx0aXBsZSBkaXJlY3RvcmllcywgYnkgcGF0aC5yZXNvbHZlIGhlcmVcbiAgICAvLyAoZXZlbiBvbiBXaW5kb3dzISlcbiAgICBjb25zdCBwa2dKc29uUGF0aCA9IHJlc29sdmVGcm9tKGN3ZCwgYCR7cGtnTmFtZX0vcGFja2FnZS5qc29uYCk7XG4gICAgdHJ5IHtcbiAgICAgIGNvbnN0IHBrZ0pzb24gPSBhd2FpdCBmcy5yZWFkRmlsZShwa2dKc29uUGF0aCwgJ3V0ZjgnKTtcbiAgICAgIGNvbnN0IHBrZyA9IEpTT04ucGFyc2UocGtnSnNvbik7XG4gICAgICByZXR1cm4ge2luc3RhbGxQYXRoOiBwYXRoLmRpcm5hbWUocGtnSnNvblBhdGgpLCBwa2d9O1xuICAgIH0gY2F0Y2gge1xuICAgICAgdGhyb3cgbmV3IEVycm9yKFxuICAgICAgICAnVGhlIHBhY2thZ2Ugd2FzIG5vdCBkb3dubG9hZGVkIGNvcnJlY3RseTsgaXRzIHBhY2thZ2UuanNvbiAnICtcbiAgICAgICAgICAnZGlkIG5vdCBleGlzdCBvciB3YXMgdW5yZWFkYWJsZS4gV2UgbG9va2VkIGZvciBpdCBhdCAnICtcbiAgICAgICAgICBwa2dKc29uUGF0aFxuICAgICAgKTtcbiAgICB9XG4gIH1cblxuICAvKipcbiAgICogQHBhcmFtIHtzdHJpbmd9IGN3ZFxuICAgKiBAcGFyYW0ge3N0cmluZ30gcGtnXG4gICAqL1xuICBhc3luYyB1bmluc3RhbGxQYWNrYWdlIChjd2QsIHBrZykge1xuICAgIGF3YWl0IHRoaXMuZXhlYygndW5pbnN0YWxsJywgW3BrZ10sIHtcbiAgICAgIGN3ZCxcbiAgICAgIGxvY2tGaWxlOiB0aGlzLl9nZXRJbnN0YWxsTG9ja2ZpbGVQYXRoKGN3ZCksXG4gICAgfSk7XG4gIH1cbn1cblxuZXhwb3J0IGNvbnN0IG5wbSA9IG5ldyBOUE0oKTtcblxuLyoqXG4gKiBPcHRpb25zIGZvciB7QGxpbmsgTlBNLmluc3RhbGxQYWNrYWdlfVxuICogQHR5cGVkZWYgSW5zdGFsbFBhY2thZ2VPcHRzXG4gKiBAcHJvcGVydHkge2ltcG9ydCgndHlwZS1mZXN0JykuTGl0ZXJhbFVuaW9uPCdsb2NhbCcsIHN0cmluZz59IFtpbnN0YWxsVHlwZV0gLSB3aGV0aGVyIHRvIGluc3RhbGwgZnJvbSBhIGxvY2FsIHBhdGggb3IgZnJvbSBucG1cbiAqIEBwcm9wZXJ0eSB7c3RyaW5nfSBbcGtnVmVyXSAtIHRoZSB2ZXJzaW9uIG9mIHRoZSBwYWNrYWdlIHRvIGluc3RhbGxcbiAqL1xuXG4vKipcbiAqIE9wdGlvbnMgZm9yIHtAbGluayBOUE0uZXhlY31cbiAqIEB0eXBlZGVmIEV4ZWNPcHRzXG4gKiBAcHJvcGVydHkge3N0cmluZ30gY3dkIC0gQ3VycmVudCB3b3JraW5nIGRpcmVjdG9yeVxuICogQHByb3BlcnR5IHtib29sZWFufSBbanNvbl0gLSBJZiBgdHJ1ZWAsIHN1cHBseSBgLS1qc29uYCBmbGFnIHRvIG5wbSBhbmQgcmVzb2x2ZSB3LyBwYXJzZWQgSlNPTlxuICogQHByb3BlcnR5IHtzdHJpbmd9IFtsb2NrRmlsZV0gLSBQYXRoIHRvIGxvY2tmaWxlIHRvIHVzZVxuICovXG5cbi8qKlxuICogQHR5cGVkZWYge2ltcG9ydCgnYWl0LXByb2Nlc3MnKS5BSVRQcm9jZXNzRXhlY09wdGlvbnN9IEFJVFByb2Nlc3NFeGVjT3B0aW9uc1xuICovXG5cbi8qKlxuICogQHR5cGVkZWYgTnBtSW5zdGFsbFJlY2VpcHRcbiAqIEBwcm9wZXJ0eSB7c3RyaW5nfSBpbnN0YWxsUGF0aCAtIFBhdGggdG8gaW5zdGFsbGVkIHBhY2thZ2VcbiAqIEBwcm9wZXJ0eSB7aW1wb3J0KCd0eXBlLWZlc3QnKS5QYWNrYWdlSnNvbn0gcGtnIC0gUGFja2FnZSBk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
+exports.npm = new NPM();
+/**
+ * Options for {@link NPM.installPackage}
+ * @typedef InstallPackageOpts
+ * @property {import('type-fest').LiteralUnion<'local', string>} [installType] - whether to install from a local path or from npm
+ * @property {string} [pkgVer] - the version of the package to install
+ */
+/**
+ * Options for {@link NPM.exec}
+ * @typedef ExecOpts
+ * @property {string} cwd - Current working directory
+ * @property {boolean} [json] - If `true`, supply `--json` flag to npm and resolve w/ parsed JSON
+ * @property {string} [lockFile] - Path to lockfile to use
+ */
+/**
+ * @typedef {import('ait-process').AITProcessExecOptions} AITProcessExecOptions
+ */
+/**
+ * @typedef NpmInstallReceipt
+ * @property {string} installPath - Path to installed package
+ * @property {import('type-fest').PackageJson} pkg - Package data
+ */
+//# sourceMappingURL=npm.js.map

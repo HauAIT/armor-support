@@ -1,102 +1,157 @@
 "use strict";
-
-var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault");
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = exports.LEVELS = void 0;
-exports.getLogger = getLogger;
-exports.loadSecureValuesPreprocessingRules = loadSecureValuesPreprocessingRules;
-exports.log = void 0;
-exports.patchLogger = patchLogger;
-require("source-map-support/register");
-var _npmlog = _interopRequireDefault(require("npmlog"));
-var _lodash = _interopRequireDefault(require("lodash"));
-var _util = require("./util");
-var _moment = _interopRequireDefault(require("moment"));
-var _logInternal = _interopRequireDefault(require("./log-internal"));
-const LEVELS = exports.LEVELS = ['silly', 'verbose', 'debug', 'info', 'http', 'warn', 'error'];
+// @ts-check
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.loadSecureValuesPreprocessingRules = exports.getLogger = exports.patchLogger = exports.log = exports.LEVELS = void 0;
+const npmlog_1 = __importDefault(require("npmlog"));
+const lodash_1 = __importDefault(require("lodash"));
+const util_1 = require("./util");
+const moment_1 = __importDefault(require("moment"));
+const log_internal_1 = __importDefault(require("./log-internal"));
+/** @type {import('armor-types').ArmorLoggerLevel[]} */
+exports.LEVELS = ['silly', 'verbose', 'debug', 'info', 'http', 'warn', 'error'];
 const MAX_LOG_RECORDS_COUNT = 3000;
 const PREFIX_TIMESTAMP_FORMAT = 'HH-mm-ss:SSS';
+// mock log object used in testing mode
 let mockLog = {};
-for (let level of LEVELS) {
-  mockLog[level] = () => {};
+for (let level of exports.LEVELS) {
+    mockLog[level] = () => { };
 }
+/**
+ *
+ * @param {import('npmlog').Logger} logger
+ */
 function patchLogger(logger) {
-  if (!logger.debug) {
-    logger.addLevel('debug', 1000, {
-      fg: 'blue',
-      bg: 'black'
-    }, 'dbug');
-  }
+    if (!logger.debug) {
+        logger.addLevel('debug', 1000, { fg: 'blue', bg: 'black' }, 'dbug');
+    }
 }
+exports.patchLogger = patchLogger;
+/**
+ *
+ * @returns {[import('npmlog').Logger, boolean]}
+ */
 function _getLogger() {
-  const testingMode = process.env._TESTING === '1';
-  const forceLogMode = process.env._FORCE_LOGS === '1';
-  const usingGlobalLog = !!global._global_npmlog;
-  let logger;
-  if (testingMode && !forceLogMode) {
-    logger = mockLog;
-  } else {
-    logger = global._global_npmlog || _npmlog.default;
-    logger.maxRecordSize = MAX_LOG_RECORDS_COUNT;
-  }
-  patchLogger(logger);
-  return [logger, usingGlobalLog];
+    // check if the user set the `_TESTING` or `_FORCE_LOGS` flag
+    const testingMode = process.env._TESTING === '1';
+    const forceLogMode = process.env._FORCE_LOGS === '1';
+    // if is possible that there is a logger instance that is already around,
+    // in which case we want t o use that
+    const usingGlobalLog = !!global._global_npmlog;
+    let logger;
+    if (testingMode && !forceLogMode) {
+        // in testing mode, use a mock logger object that we can query
+        logger = mockLog;
+    }
+    else {
+        // otherwise, either use the global, or a new `npmlog` object
+        logger = global._global_npmlog || npmlog_1.default;
+        // The default value is 10000, which causes excessive memory usage
+        logger.maxRecordSize = MAX_LOG_RECORDS_COUNT;
+    }
+    patchLogger(logger);
+    return [logger, usingGlobalLog];
 }
+/**
+ * @param {ArmorLoggerPrefix?} prefix
+ * @param {boolean} logTimestamp whether to include timestamps into log prefixes
+ * @returns {string}
+ */
 function getActualPrefix(prefix, logTimestamp = false) {
-  var _ref;
-  const result = (_ref = _lodash.default.isFunction(prefix) ? prefix() : prefix) !== null && _ref !== void 0 ? _ref : '';
-  return logTimestamp ? `[${(0, _moment.default)().format(PREFIX_TIMESTAMP_FORMAT)}] ${result}` : result;
+    const result = (lodash_1.default.isFunction(prefix) ? prefix() : prefix) ?? '';
+    return logTimestamp ? `[${(0, moment_1.default)().format(PREFIX_TIMESTAMP_FORMAT)}] ${result}` : result;
 }
+/**
+ *
+ * @param {ArmorLoggerPrefix?} prefix
+ * @returns {ArmorLogger}
+ */
 function getLogger(prefix = null) {
-  let [logger, usingGlobalLog] = _getLogger();
-  let wrappedLogger = {
-    unwrap: () => logger,
-    levels: LEVELS,
-    prefix
-  };
-  Object.defineProperty(wrappedLogger, 'level', {
-    get() {
-      return logger.level;
-    },
-    set(newValue) {
-      logger.level = newValue;
-    },
-    enumerable: true,
-    configurable: true
-  });
-  const logTimestamp = process.env._LOG_TIMESTAMP === '1';
-  for (const level of LEVELS) {
-    wrappedLogger[level] = function (...args) {
-      const actualPrefix = getActualPrefix(this.prefix, logTimestamp);
-      for (const arg of args) {
-        const out = _lodash.default.isError(arg) && arg.stack ? arg.stack : `${arg}`;
-        for (const line of out.split('\n')) {
-          const unleakedLine = (0, _util.unleakString)(line);
-          logger[level](actualPrefix, _logInternal.default.preprocess(unleakedLine));
-        }
-      }
+    let [logger, usingGlobalLog] = _getLogger();
+    // wrap the logger so that we can catch and modify any logging
+    let wrappedLogger = {
+        unwrap: () => logger,
+        levels: exports.LEVELS,
+        prefix,
     };
-  }
-  wrappedLogger.errorAndThrow = function (err) {
-    this.error(err);
-    throw _lodash.default.isError(err) ? err : new Error((0, _util.unleakString)(err));
-  };
-  if (!usingGlobalLog) {
-    wrappedLogger.level = 'verbose';
-  }
-  return wrappedLogger;
+    // allow access to the level of the underlying logger
+    Object.defineProperty(wrappedLogger, 'level', {
+        get() {
+            return logger.level;
+        },
+        set(newValue) {
+            logger.level = newValue;
+        },
+        enumerable: true,
+        configurable: true,
+    });
+    const logTimestamp = process.env._LOG_TIMESTAMP === '1';
+    // add all the levels from `npmlog`, and map to the underlying logger
+    for (const level of exports.LEVELS) {
+        wrappedLogger[level] = /** @param {...any} args */ function (...args) {
+            const actualPrefix = getActualPrefix(this.prefix, logTimestamp);
+            for (const arg of args) {
+                const out = lodash_1.default.isError(arg) && arg.stack ? arg.stack : `${arg}`;
+                for (const line of out.split('\n')) {
+                    // it is necessary to unleak each line because `split` call
+                    // creates "views" to the original string as well as the `substring` one
+                    const unleakedLine = (0, util_1.unleakString)(line);
+                    logger[level](actualPrefix, log_internal_1.default.preprocess(unleakedLine));
+                }
+            }
+        };
+    }
+    // add method to log an error, and throw it, for convenience
+    wrappedLogger.errorAndThrow = function (err) {
+        this.error(err);
+        // make sure we have an `Error` object. Wrap if necessary
+        throw lodash_1.default.isError(err) ? err : new Error((0, util_1.unleakString)(err));
+    };
+    if (!usingGlobalLog) {
+        // if we're not using a global log specified from some top-level package,
+        // set the log level to a default of verbose. Otherwise, let the top-level
+        // package set the log level
+        wrappedLogger.level = 'verbose';
+    }
+    return /** @type {ArmorLogger} */ (wrappedLogger);
 }
+exports.getLogger = getLogger;
+/**
+ * @typedef LoadResult
+ * @property {string[]} issues The list of rule parsing issues (one item per rule).
+ * Rules with issues are skipped. An empty list is returned if no parsing issues exist.
+ * @property {import('./log-internal').SecureValuePreprocessingRule[]} rules The list of successfully loaded
+ * replacement rules. The list could be empty if no rules were loaded.
+ */
+/**
+ * Loads the JSON file containing secure values replacement rules.
+ * This might be necessary to hide sensitive values that may possibly
+ * appear in Armor logs.
+ * Each call to this method replaces the previously loaded rules if any existed.
+ *
+ * @param {string|string[]|import('armor-types').LogFiltersConfig} rulesJsonPath The full path to the JSON file containing
+ * the replacement rules. Each rule could either be a string to be replaced
+ * or an object with predefined properties.
+ * @throws {Error} If the given file cannot be loaded
+ * @returns {Promise<LoadResult>}
+ */
 async function loadSecureValuesPreprocessingRules(rulesJsonPath) {
-  const issues = await _logInternal.default.loadRules(rulesJsonPath);
-  return {
-    issues,
-    rules: _lodash.default.cloneDeep(_logInternal.default.rules)
-  };
+    const issues = await log_internal_1.default.loadRules(rulesJsonPath);
+    return {
+        issues,
+        rules: lodash_1.default.cloneDeep(log_internal_1.default.rules),
+    };
 }
-const log = exports.log = getLogger();
-var _default = exports.default = log;require('source-map-support').install();
-
-
-//# sourceMappingURL=data:application/json;charset=utf8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoibGliL2xvZ2dpbmcuanMiLCJuYW1lcyI6WyJfbnBtbG9nIiwiX2ludGVyb3BSZXF1aXJlRGVmYXVsdCIsInJlcXVpcmUiLCJfbG9kYXNoIiwiX3V0aWwiLCJfbW9tZW50IiwiX2xvZ0ludGVybmFsIiwiTEVWRUxTIiwiZXhwb3J0cyIsIk1BWF9MT0dfUkVDT1JEU19DT1VOVCIsIlBSRUZJWF9USU1FU1RBTVBfRk9STUFUIiwibW9ja0xvZyIsImxldmVsIiwicGF0Y2hMb2dnZXIiLCJsb2dnZXIiLCJkZWJ1ZyIsImFkZExldmVsIiwiZmciLCJiZyIsIl9nZXRMb2dnZXIiLCJ0ZXN0aW5nTW9kZSIsInByb2Nlc3MiLCJlbnYiLCJfVEVTVElORyIsImZvcmNlTG9nTW9kZSIsIl9GT1JDRV9MT0dTIiwidXNpbmdHbG9iYWxMb2ciLCJnbG9iYWwiLCJfZ2xvYmFsX25wbWxvZyIsIm5wbWxvZyIsIm1heFJlY29yZFNpemUiLCJnZXRBY3R1YWxQcmVmaXgiLCJwcmVmaXgiLCJsb2dUaW1lc3RhbXAiLCJfcmVmIiwicmVzdWx0IiwiXyIsImlzRnVuY3Rpb24iLCJtb21lbnQiLCJmb3JtYXQiLCJnZXRMb2dnZXIiLCJ3cmFwcGVkTG9nZ2VyIiwidW53cmFwIiwibGV2ZWxzIiwiT2JqZWN0IiwiZGVmaW5lUHJvcGVydHkiLCJnZXQiLCJzZXQiLCJuZXdWYWx1ZSIsImVudW1lcmFibGUiLCJjb25maWd1cmFibGUiLCJfTE9HX1RJTUVTVEFNUCIsImFyZ3MiLCJhY3R1YWxQcmVmaXgiLCJhcmciLCJvdXQiLCJpc0Vycm9yIiwic3RhY2siLCJsaW5lIiwic3BsaXQiLCJ1bmxlYWtlZExpbmUiLCJ1bmxlYWtTdHJpbmciLCJTRUNVUkVfVkFMVUVTX1BSRVBST0NFU1NPUiIsInByZXByb2Nlc3MiLCJlcnJvckFuZFRocm93IiwiZXJyIiwiZXJyb3IiLCJFcnJvciIsImxvYWRTZWN1cmVWYWx1ZXNQcmVwcm9jZXNzaW5nUnVsZXMiLCJydWxlc0pzb25QYXRoIiwiaXNzdWVzIiwibG9hZFJ1bGVzIiwicnVsZXMiLCJjbG9uZURlZXAiLCJsb2ciLCJfZGVmYXVsdCIsImRlZmF1bHQiXSwic291cmNlUm9vdCI6Ii4uLy4uIiwic291cmNlcyI6WyJsaWIvbG9nZ2luZy5qcyJdLCJzb3VyY2VzQ29udGVudCI6WyIvLyBAdHMtY2hlY2tcblxuaW1wb3J0IG5wbWxvZyBmcm9tICducG1sb2cnO1xuaW1wb3J0IF8gZnJvbSAnbG9kYXNoJztcbmltcG9ydCB7dW5sZWFrU3RyaW5nfSBmcm9tICcuL3V0aWwnO1xuaW1wb3J0IG1vbWVudCBmcm9tICdtb21lbnQnO1xuaW1wb3J0IFNFQ1VSRV9WQUxVRVNfUFJFUFJPQ0VTU09SIGZyb20gJy4vbG9nLWludGVybmFsJztcblxuLyoqIEB0eXBlIHtpbXBvcnQoJ2FybW9yLXR5cGVzJykuQXJtb3JMb2dnZXJMZXZlbFtdfSAqL1xuZXhwb3J0IGNvbnN0IExFVkVMUyA9IFsnc2lsbHknLCAndmVyYm9zZScsICdkZWJ1ZycsICdpbmZvJywgJ2h0dHAnLCAnd2FybicsICdlcnJvciddO1xuY29uc3QgTUFYX0xPR19SRUNPUkRTX0NPVU5UID0gMzAwMDtcblxuY29uc3QgUFJFRklYX1RJTUVTVEFNUF9GT1JNQVQgPSAnSEgtbW0tc3M6U1NTJztcblxuLy8gbW9jayBsb2cgb2JqZWN0IHVzZWQgaW4gdGVzdGluZyBtb2RlXG5sZXQgbW9ja0xvZyA9IHt9O1xuZm9yIChsZXQgbGV2ZWwgb2YgTEVWRUxTKSB7XG4gIG1vY2tMb2dbbGV2ZWxdID0gKCkgPT4ge307XG59XG5cbi8qKlxuICpcbiAqIEBwYXJhbSB7aW1wb3J0KCducG1sb2cnKS5Mb2dnZXJ9IGxvZ2dlclxuICovXG5mdW5jdGlvbiBwYXRjaExvZ2dlciAobG9nZ2VyKSB7XG4gIGlmICghbG9nZ2VyLmRlYnVnKSB7XG4gICAgbG9nZ2VyLmFkZExldmVsKCdkZWJ1ZycsIDEwMDAsIHtmZzogJ2JsdWUnLCBiZzogJ2JsYWNrJ30sICdkYnVnJyk7XG4gIH1cbn1cblxuLyoqXG4gKlxuICogQHJldHVybnMge1tpbXBvcnQoJ25wbWxvZycpLkxvZ2dlciwgYm9vbGVhbl19XG4gKi9cbmZ1bmN0aW9uIF9nZXRMb2dnZXIgKCkge1xuICAvLyBjaGVjayBpZiB0aGUgdXNlciBzZXQgdGhlIGBfVEVTVElOR2Agb3IgYF9GT1JDRV9MT0dTYCBmbGFnXG4gIGNvbnN0IHRlc3RpbmdNb2RlID0gcHJvY2Vzcy5lbnYuX1RFU1RJTkcgPT09ICcxJztcbiAgY29uc3QgZm9yY2VMb2dNb2RlID0gcHJvY2Vzcy5lbnYuX0ZPUkNFX0xPR1MgPT09ICcxJztcblxuICAvLyBpZiBpcyBwb3NzaWJsZSB0aGF0IHRoZXJlIGlzIGEgbG9nZ2VyIGluc3RhbmNlIHRoYXQgaXMgYWxyZWFkeSBhcm91bmQsXG4gIC8vIGluIHdoaWNoIGNhc2Ugd2Ugd2FudCB0IG8gdXNlIHRoYXRcbiAgY29uc3QgdXNpbmdHbG9iYWxMb2cgPSAhIWdsb2JhbC5fZ2xvYmFsX25wbWxvZztcbiAgbGV0IGxvZ2dlcjtcbiAgaWYgKHRlc3RpbmdNb2RlICYmICFmb3JjZUxvZ01vZGUpIHtcbiAgICAvLyBpbiB0ZXN0aW5nIG1vZGUsIHVzZSBhIG1vY2sgbG9nZ2VyIG9iamVjdCB0aGF0IHdlIGNhbiBxdWVyeVxuICAgIGxvZ2dlciA9IG1vY2tMb2c7XG4gIH0gZWxzZSB7XG4gICAgLy8gb3RoZXJ3aXNlLCBlaXRoZXIgdXNlIHRoZSBnbG9iYWwsIG9yIGEgbmV3IGBucG1sb2dgIG9iamVjdFxuICAgIGxvZ2dlciA9IGdsb2JhbC5fZ2xvYmFsX25wbWxvZyB8fCBucG1sb2c7XG4gICAgLy8gVGhlIGRlZmF1bHQgdmFsdWUgaXMgMTAwMDAsIHdoaWNoIGNhdXNlcyBleGNlc3NpdmUgbWVtb3J5IHVzYWdlXG4gICAgbG9nZ2VyLm1heFJlY29yZFNpemUgPSBNQVhfTE9HX1JFQ09SRFNfQ09VTlQ7XG4gIH1cbiAgcGF0Y2hMb2dnZXIobG9nZ2VyKTtcbiAgcmV0dXJuIFtsb2dnZXIsIHVzaW5nR2xvYmFsTG9nXTtcbn1cblxuLyoqXG4gKiBAcGFyYW0ge0FybW9yTG9nZ2VyUHJlZml4P30gcHJlZml4XG4gKiBAcGFyYW0ge2Jvb2xlYW59IGxvZ1RpbWVzdGFtcCB3aGV0aGVyIHRvIGluY2x1ZGUgdGltZXN0YW1wcyBpbnRvIGxvZyBwcmVmaXhlc1xuICogQHJldHVybnMge3N0cmluZ31cbiAqL1xuZnVuY3Rpb24gZ2V0QWN0dWFsUHJlZml4IChwcmVmaXgsIGxvZ1RpbWVzdGFtcCA9IGZhbHNlKSB7XG4gIGNvbnN0IHJlc3VsdCA9IChfLmlzRnVuY3Rpb24ocHJlZml4KSA/IHByZWZpeCgpIDogcHJlZml4KSA/PyAnJztcbiAgcmV0dXJuIGxvZ1RpbWVzdGFtcCA/IGBbJHttb21lbnQoKS5mb3JtYXQoUFJFRklYX1RJTUVTVEFNUF9GT1JNQVQpfV0gJHtyZXN1bHR9YCA6IHJlc3VsdDtcbn1cblxuLyoqXG4gKlxuICogQHBhcmFtIHtBcm1vckxvZ2dlclByZWZpeD99IHByZWZpeFxuICogQHJldHVybnMge0FybW9yTG9nZ2VyfVxuICovXG5mdW5jdGlvbiBnZXRMb2dnZXIgKHByZWZpeCA9IG51bGwpIHtcbiAgbGV0IFtsb2dnZXIsIHVzaW5nR2xvYmFsTG9nXSA9IF9nZXRMb2dnZXIoKTtcblxuICAvLyB3cmFwIHRoZSBsb2dnZXIgc28gdGhhdCB3ZSBjYW4gY2F0Y2ggYW5kIG1vZGlmeSBhbnkgbG9nZ2luZ1xuICBsZXQgd3JhcHBlZExvZ2dlciA9IHtcbiAgICB1bndyYXA6ICgpID0+IGxvZ2dlcixcbiAgICBsZXZlbHM6IExFVkVMUyxcbiAgICBwcmVmaXgsXG4gIH07XG5cbiAgLy8gYWxsb3cgYWNjZXNzIHRvIHRoZSBsZXZlbCBvZiB0aGUgdW5kZXJseWluZyBsb2dnZXJcbiAgT2JqZWN0LmRlZmluZVByb3BlcnR5KHdyYXBwZWRMb2dnZXIsICdsZXZlbCcsIHtcbiAgICBnZXQgKCkge1xuICAgICAgcmV0dXJuIGxvZ2dlci5sZXZlbDtcbiAgICB9LFxuICAgIHNldCAobmV3VmFsdWUpIHtcbiAgICAgIGxvZ2dlci5sZXZlbCA9IG5ld1ZhbHVlO1xuICAgIH0sXG4gICAgZW51bWVyYWJsZTogdHJ1ZSxcbiAgICBjb25maWd1cmFibGU6IHRydWUsXG4gIH0pO1xuXG4gIGNvbnN0IGxvZ1RpbWVzdGFtcCA9IHByb2Nlc3MuZW52Ll9MT0dfVElNRVNUQU1QID09PSAnMSc7XG5cbiAgLy8gYWRkIGFsbCB0aGUgbGV2ZWxzIGZyb20gYG5wbWxvZ2AsIGFuZCBtYXAgdG8gdGhlIHVuZGVybHlpbmcgbG9nZ2VyXG4gIGZvciAoY29uc3QgbGV2ZWwgb2YgTEVWRUxTKSB7XG4gICAgd3JhcHBlZExvZ2dlcltsZXZlbF0gPSAvKiogQHBhcmFtIHsuLi5hbnl9IGFyZ3MgKi8gZnVuY3Rpb24gKC4uLmFyZ3MpIHtcbiAgICAgIGNvbnN0IGFjdHVhbFByZWZpeCA9IGdldEFjdHVhbFByZWZpeCh0aGlzLnByZWZpeCwgbG9nVGltZXN0YW1wKTtcbiAgICAgIGZvciAoY29uc3QgYXJnIG9mIGFyZ3MpIHtcbiAgICAgICAgY29uc3Qgb3V0ID0gXy5pc0Vycm9yKGFyZykgJiYgYXJnLnN0YWNrID8gYXJnLnN0YWNrIDogYCR7YXJnfWA7XG4gICAgICAgIGZvciAoY29uc3QgbGluZSBvZiBvdXQuc3BsaXQoJ1xcbicpKSB7XG4gICAgICAgICAgLy8gaXQgaXMgbmVjZXNzYXJ5IHRvIHVubGVhayBlYWNoIGxpbmUgYmVjYXVzZSBgc3BsaXRgIGNhbGxcbiAgICAgICAgICAvLyBjcmVhdGVzIFwidmlld3NcIiB0byB0aGUgb3JpZ2luYWwgc3RyaW5nIGFzIHdlbGwgYXMgdGhlIGBzdWJzdHJpbmdgIG9uZVxuICAgICAgICAgIGNvbnN0IHVubGVha2VkTGluZSA9IHVubGVha1N0cmluZyhsaW5lKTtcbiAgICAgICAgICBsb2dnZXJbbGV2ZWxdKGFjdHVhbFByZWZpeCwgU0VDVVJFX1ZBTFVFU19QUkVQUk9DRVNTT1IucHJlcHJvY2Vzcyh1bmxlYWtlZExpbmUpKTtcbiAgICAgICAgfVxuICAgICAgfVxuICAgIH07XG4gIH1cbiAgLy8gYWRkIG1ldGhvZCB0byBsb2cgYW4gZXJyb3IsIGFuZCB0aHJvdyBpdCwgZm9yIGNvbnZlbmllbmNlXG4gIHdyYXBwZWRMb2dnZXIuZXJyb3JBbmRUaHJvdyA9IGZ1bmN0aW9uIChlcnIpIHtcbiAgICB0aGlzLmVycm9yKGVycik7XG4gICAgLy8gbWFrZSBzdXJlIHdlIGhhdmUgYW4gYEVycm9yYCBvYmplY3QuIFdyYXAgaWYgbmVjZXNzYXJ5XG4gICAgdGhyb3cgXy5pc0Vycm9yKGVycikgPyBlcnIgOiBuZXcgRXJyb3IodW5sZWFrU3RyaW5nKGVycikpO1xuICB9O1xuICBpZiAoIXVzaW5nR2xvYmFsTG9nKSB7XG4gICAgLy8gaWYgd2UncmUgbm90IHVzaW5nIGEgZ2xvYmFsIGxvZyBzcGVjaWZpZWQgZnJvbSBzb21lIHRvcC1sZXZlbCBwYWNrYWdlLFxuICAgIC8vIHNldCB0aGUgbG9nIGxldmVsIHRvIGEgZGVmYXVsdCBvZiB2ZXJib3NlLiBPdGhlcndpc2UsIGxldCB0aGUgdG9wLWxldmVsXG4gICAgLy8gcGFja2FnZSBzZXQgdGhlIGxvZyBsZXZlbFxuICAgIHdyYXBwZWRMb2dnZXIubGV2ZWwgPSAndmVyYm9zZSc7XG4gIH1cbiAgcmV0dXJuIC8qKiBAdHlwZSB7QXJtb3JMb2dnZXJ9ICovICh3cmFwcGVkTG9nZ2VyKTtcbn1cblxuLyoqXG4gKiBAdHlwZWRlZiBMb2FkUmVzdWx0XG4gKiBAcHJvcGVydHkge3N0cmluZ1tdfSBpc3N1ZXMgVGhlIGxpc3Qgb2YgcnVsZSBwYXJzaW5nIGlzc3VlcyAob25lIGl0ZW0gcGVyIHJ1bGUpLlxuICogUnVsZXMgd2l0aCBpc3N1ZXMgYXJlIHNraXBwZWQuIEFuIGVtcHR5IGxpc3QgaXMgcmV0dXJuZWQgaWYgbm8gcGFyc2luZyBpc3N1ZXMgZXhpc3QuXG4gKiBAcHJvcGVydHkge2ltcG9ydCgnLi9sb2ctaW50ZXJuYWwnKS5TZWN1cmVWYWx1ZVByZXByb2Nlc3NpbmdSdWxlW119IHJ1bGVzIFRoZSBsaXN0IG9mIHN1Y2Nlc3NmdWxseSBsb2FkZWRcbiAqIHJlcGxhY2VtZW50IHJ1bGVzLiBUaGUgbGlzdCBjb3VsZCBiZSBlbXB0eSBpZiBubyBydWxlcyB3ZXJlIGxvYWRlZC5cbiAqL1xuXG4vKipcbiAqIExvYWRzIHRoZSBKU09OIGZpbGUgY29udGFpbmluZyBzZWN1cmUgdmFsdWVzIHJlcGxhY2VtZW50IHJ1bGVzLlxuICogVGhpcyBtaWdodCBiZSBuZWNlc3NhcnkgdG8gaGlkZSBzZW5zaXRpdmUgdmFsdWVzIHRoYXQgbWF5IHBvc3NpYmx5XG4gKiBhcHBlYXIgaW4gQXJtb3IgbG9ncy5cbiAqIEVhY2ggY2FsbCB0byB0aGlzIG1ldGhvZCByZXBsYWNlcyB0aGUgcHJldmlvdXNseSBsb2FkZWQgcnVsZXMgaWYgYW55IGV4aXN0ZWQuXG4gKlxuICogQHBhcmFtIHtzdHJpbmd8c3RyaW5nW118aW1wb3J0KCdhcm1vci10eXBlcycpLkxvZ0ZpbHRlcnNDb25maWd9IHJ1bGVzSnNvblBhdGggVGhlIGZ1bGwgcGF0aCB0byB0aGUgSlNPTiBmaWxlIGNvbnRhaW5pbmdcbiAqIHRoZSByZXBsYWNlbWVudCBydWxlcy4gRWFjaCBydWxlIGNvdWxkIGVpdGhlciBiZSBhIHN0cmluZyB0byBiZSByZXBsYWNlZFxuICogb3IgYW4gb2JqZWN0IHdpdGggcHJlZGVmaW5lZCBwcm9wZXJ0aWVzLlxuICogQHRocm93cyB7RXJyb3J9IElmIHRoZSBnaXZlbiBmaWxlIGNhbm5vdCBiZSBsb2FkZWRcbiAqIEByZXR1cm5zIHtQcm9taXNlPExvYWRSZXN1bHQ+fVxuICovXG5hc3luYyBmdW5jdGlvbiBsb2FkU2VjdXJlVmFsdWVzUHJlcHJvY2Vzc2luZ1J1bGVzIChydWxlc0pzb25QYXRoKSB7XG4gIGNvbnN0IGlzc3VlcyA9IGF3YWl0IFNFQ1VSRV9WQUxVRVNfUFJFUFJPQ0VTU09SLmxvYWRSdWxlcyhydWxlc0pzb25QYXRoKTtcbiAgcmV0dXJuIHtcbiAgICBpc3N1ZXMsXG4gICAgcnVsZXM6IF8uY2xvbmVEZWVwKFNFQ1VSRV9WQUxVRVNfUFJFUFJPQ0VTU09SLnJ1bGVzKSxcbiAgfTtcbn1cblxuLy8gZXhwb3J0IGEgZGVmYXVsdCBsb2dnZXIgd2l0aCBubyBwcmVmaXhcbmNvbnN0IGxvZyA9IGdldExvZ2dlcigpO1xuXG5leHBvcnQge2xvZywgcGF0Y2hMb2dnZXIsIGdldExvZ2dlciwgbG9hZFNlY3VyZVZhbHVlc1ByZXByb2Nlc3NpbmdSdWxlc307XG5leHBvcnQgZGVmYXVsdCBsb2c7XG5cbi8qKlxuICogQHR5cGVkZWYge2ltcG9ydCgnYXJtb3ItdHlwZXMnKS5Bcm1vckxvZ2dlclByZWZpeH0gQXJtb3JMb2dnZXJQcmVmaXhcbiAqIEB0eXBlZGVmIHtpbXBvcnQoJ2FybW9yLXR5cGVzJykuQXJtb3JMb2dnZXJ9IEFybW9yTG9nZ2VyXG4gKiBAdHlwZWRlZiB7aW1wb3J0KCdhcm1vci10eXBlcycpLkFybW9yTG9nZ2VyTGV2ZWx9IEFybW9yTG9nZ2VyTGV2ZWxcbiAqL1xuIl0sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7Ozs7QUFFQSxJQUFBQSxPQUFBLEdBQUFDLHNCQUFBLENBQUFDLE9BQUE7QUFDQSxJQUFBQyxPQUFBLEdBQUFGLHNCQUFBLENBQUFDLE9BQUE7QUFDQSxJQUFBRSxLQUFBLEdBQUFGLE9BQUE7QUFDQSxJQUFBRyxPQUFBLEdBQUFKLHNCQUFBLENBQUFDLE9BQUE7QUFDQSxJQUFBSSxZQUFBLEdBQUFMLHNCQUFBLENBQUFDLE9BQUE7QUFHTyxNQUFNSyxNQUFNLEdBQUFDLE9BQUEsQ0FBQUQsTUFBQSxHQUFHLENBQUMsT0FBTyxFQUFFLFNBQVMsRUFBRSxPQUFPLEVBQUUsTUFBTSxFQUFFLE1BQU0sRUFBRSxNQUFNLEVBQUUsT0FBTyxDQUFDO0FBQ3BGLE1BQU1FLHFCQUFxQixHQUFHLElBQUk7QUFFbEMsTUFBTUMsdUJBQXVCLEdBQUcsY0FBYztBQUc5QyxJQUFJQyxPQUFPLEdBQUcsQ0FBQyxDQUFDO0FBQ2hCLEtBQUssSUFBSUMsS0FBSyxJQUFJTCxNQUFNLEVBQUU7RUFDeEJJLE9BQU8sQ0FBQ0MsS0FBSyxDQUFDLEdBQUcsTUFBTSxDQUFDLENBQUM7QUFDM0I7QUFNQSxTQUFTQyxXQUFXQSxD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
+exports.loadSecureValuesPreprocessingRules = loadSecureValuesPreprocessingRules;
+// export a default logger with no prefix
+const log = getLogger();
+exports.log = log;
+exports.default = log;
+/**
+ * @typedef {import('armor-types').ArmorLoggerPrefix} ArmorLoggerPrefix
+ * @typedef {import('armor-types').ArmorLogger} ArmorLogger
+ * @typedef {import('armor-types').ArmorLoggerLevel} ArmorLoggerLevel
+ */
+//# sourceMappingURL=logging.js.map

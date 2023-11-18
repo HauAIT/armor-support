@@ -1,80 +1,141 @@
 "use strict";
-
-var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault");
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.findArmorDependencyPackage = exports.MANIFEST_RELATIVE_PATH = exports.MANIFEST_BASENAME = exports.DEFAULT_ARMOR_HOME = void 0;
-exports.hasArmorDependency = hasArmorDependency;
-exports.resolveManifestPath = exports.resolveArmorHome = exports.readPackageInDir = void 0;
-require("source-map-support/register");
-var _lodash = _interopRequireDefault(require("lodash"));
-var _os = require("os");
-var _path = _interopRequireDefault(require("path"));
-var _readPkg = _interopRequireDefault(require("read-pkg"));
-var _npm = require("./npm");
-const DEFAULT_ARMOR_HOME = exports.DEFAULT_ARMOR_HOME = _path.default.resolve((0, _os.homedir)(), '.armor');
-const MANIFEST_BASENAME = exports.MANIFEST_BASENAME = 'extensions.yaml';
-const MANIFEST_RELATIVE_PATH = exports.MANIFEST_RELATIVE_PATH = _path.default.join('node_modules', '.cache', 'armor', MANIFEST_BASENAME);
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.resolveManifestPath = exports.resolveArmorHome = exports.readPackageInDir = exports.findArmorDependencyPackage = exports.hasArmorDependency = exports.MANIFEST_RELATIVE_PATH = exports.MANIFEST_BASENAME = exports.DEFAULT_ARMOR_HOME = void 0;
+// @ts-check
+const lodash_1 = __importDefault(require("lodash"));
+const os_1 = require("os");
+const path_1 = __importDefault(require("path"));
+const read_pkg_1 = __importDefault(require("read-pkg"));
+const npm_1 = require("./npm");
+/**
+ * Path to the default `ARMOR_HOME` dir (`~/.armor`).
+ * @type {string}
+ */
+exports.DEFAULT_ARMOR_HOME = path_1.default.resolve((0, os_1.homedir)(), '.armor');
+/**
+ * Basename of extension manifest file.
+ * @type {string}
+ */
+exports.MANIFEST_BASENAME = 'extensions.yaml';
+/**
+ * Relative path to extension manifest file from `ARMOR_HOME`.
+ * @type {string}
+ */
+exports.MANIFEST_RELATIVE_PATH = path_1.default.join('node_modules', '.cache', 'armor', exports.MANIFEST_BASENAME);
 const OLD_VERSION_REGEX = /^[01]/;
+/**
+ * Resolves `true` if an `armor` dependency can be found somewhere in the given `cwd`.
+ *
+ * @param {string} cwd
+ * @returns {Promise<boolean>}
+ */
 async function hasArmorDependency(cwd) {
-  return Boolean(await findArmorDependencyPackage(cwd));
+    return Boolean(await (0, exports.findArmorDependencyPackage)(cwd));
 }
-const findArmorDependencyPackage = exports.findArmorDependencyPackage = _lodash.default.memoize(async (cwd = process.cwd()) => {
-  const readPkg = async cwd => {
-    let pkgPath;
+exports.hasArmorDependency = hasArmorDependency;
+/**
+ * Given `cwd`, use `npm` to find the closest package _or workspace root_, and return the path if the root depends upon `armor`.
+ *
+ * Looks at `dependencies` and `devDependencies` for `armor`.
+ */
+exports.findArmorDependencyPackage = lodash_1.default.memoize(
+/**
+ * @param {string} [cwd]
+ * @returns {Promise<string|undefined>}
+ */
+async (cwd = process.cwd()) => {
+    /**
+     * Tries to read `package.json` in `cwd` and resolves the identity if it depends on `armor`;
+     * otherwise resolves `undefined`.
+     * @param {string} cwd
+     * @returns {Promise<string|undefined>}
+     */
+    const readPkg = async (cwd) => {
+        /** @type {string|undefined} */
+        let pkgPath;
+        try {
+            const pkg = await (0, exports.readPackageInDir)(cwd);
+            const version = pkg?.dependencies?.armor ??
+                pkg?.devDependencies?.armor ??
+                pkg?.peerDependencies?.armor;
+            pkgPath = version && !OLD_VERSION_REGEX.test(String(version)) ? cwd : undefined;
+        }
+        catch { }
+        return pkgPath;
+    };
+    cwd = path_1.default.resolve(cwd);
+    /** @type {string} */
+    let pkgDir;
     try {
-      var _ref, _pkg$dependencies$arm, _pkg$dependencies, _pkg$devDependencies, _pkg$peerDependencies;
-      const pkg = await readPackageInDir(cwd);
-      const version = (_ref = (_pkg$dependencies$arm = pkg === null || pkg === void 0 ? void 0 : (_pkg$dependencies = pkg.dependencies) === null || _pkg$dependencies === void 0 ? void 0 : _pkg$dependencies.armor) !== null && _pkg$dependencies$arm !== void 0 ? _pkg$dependencies$arm : pkg === null || pkg === void 0 ? void 0 : (_pkg$devDependencies = pkg.devDependencies) === null || _pkg$devDependencies === void 0 ? void 0 : _pkg$devDependencies.armor) !== null && _ref !== void 0 ? _ref : pkg === null || pkg === void 0 ? void 0 : (_pkg$peerDependencies = pkg.peerDependencies) === null || _pkg$peerDependencies === void 0 ? void 0 : _pkg$peerDependencies.armor;
-      pkgPath = version && !OLD_VERSION_REGEX.test(String(version)) ? cwd : undefined;
-    } catch {}
-    return pkgPath;
-  };
-  cwd = _path.default.resolve(cwd);
-  let pkgDir;
-  try {
-    const {
-      json: list
-    } = await _npm.npm.exec('list', ['--long', '--json'], {
-      cwd
-    });
-    ({
-      path: pkgDir
-    } = list);
-    if (pkgDir !== cwd) {
-      var _pkgDir;
-      pkgDir = (_pkgDir = pkgDir) !== null && _pkgDir !== void 0 ? _pkgDir : cwd;
+        const { json: list } = await npm_1.npm.exec('list', ['--long', '--json'], { cwd });
+        ({ path: pkgDir } = list);
+        if (pkgDir !== cwd) {
+            pkgDir = pkgDir ?? cwd;
+        }
     }
-  } catch {
-    pkgDir = cwd;
-  }
-  return await readPkg(pkgDir);
+    catch {
+        pkgDir = cwd;
+    }
+    return await readPkg(pkgDir);
 });
-const readPackageInDir = exports.readPackageInDir = _lodash.default.memoize(async function _readPackageInDir(cwd) {
-  return await (0, _readPkg.default)({
-    cwd,
-    normalize: true
-  });
+/**
+ * Read a `package.json` in dir `cwd`.  If none found, return `undefined`.
+ */
+exports.readPackageInDir = lodash_1.default.memoize(
+/**
+ *
+ * @param {string} cwd - Directory ostensibly having a `package.json`
+ * @returns {Promise<import('read-pkg').NormalizedPackageJson|undefined>}
+ */
+async function _readPackageInDir(cwd) {
+    return await (0, read_pkg_1.default)({ cwd, normalize: true });
 });
-const resolveArmorHome = exports.resolveArmorHome = _lodash.default.memoize(async function _resolveArmorHome(cwd = process.cwd()) {
-  if (!_path.default.isAbsolute(cwd)) {
-    throw new TypeError('`cwd` parameter must be an absolute path');
-  }
-  if (process.env.ARMOR_HOME) {
-    return _path.default.resolve(cwd, process.env.ARMOR_HOME);
-  }
-  const pkgPath = await findArmorDependencyPackage(cwd);
-  if (pkgPath) {
-    return pkgPath;
-  }
-  return DEFAULT_ARMOR_HOME;
+/**
+ * Determines location of Armor's "home" dir
+ *
+ * - If `ARMOR_HOME` is set in the environment, use that
+ * - If we find a `package.json` in or above `cwd` and it has an `armor` dependency, use that.
+ *
+ * All returned paths will be absolute.
+ */
+exports.resolveArmorHome = lodash_1.default.memoize(
+/**
+ * @param {string} [cwd] - Current working directory.  _Must_ be absolute, if specified.
+ * @returns {Promise<string>}
+ */
+async function _resolveArmorHome(cwd = process.cwd()) {
+    if (!path_1.default.isAbsolute(cwd)) {
+        throw new TypeError('`cwd` parameter must be an absolute path');
+    }
+    if (process.env.ARMOR_HOME) {
+        return path_1.default.resolve(cwd, process.env.ARMOR_HOME);
+    }
+    const pkgPath = await (0, exports.findArmorDependencyPackage)(cwd);
+    if (pkgPath) {
+        return pkgPath;
+    }
+    return exports.DEFAULT_ARMOR_HOME;
 });
-const resolveManifestPath = exports.resolveManifestPath = _lodash.default.memoize(async function _resolveManifestPath(armorHome) {
-  var _armorHome;
-  armorHome = (_armorHome = armorHome) !== null && _armorHome !== void 0 ? _armorHome : await resolveArmorHome();
-  return _path.default.join(armorHome, MANIFEST_RELATIVE_PATH);
-});require('source-map-support').install();
-
-
-//# sourceMappingURL=data:application/json;charset=utf8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoibGliL2Vudi5qcyIsIm5hbWVzIjpbIl9sb2Rhc2giLCJfaW50ZXJvcFJlcXVpcmVEZWZhdWx0IiwicmVxdWlyZSIsIl9vcyIsIl9wYXRoIiwiX3JlYWRQa2ciLCJfbnBtIiwiREVGQVVMVF9BUk1PUl9IT01FIiwiZXhwb3J0cyIsInBhdGgiLCJyZXNvbHZlIiwiaG9tZWRpciIsIk1BTklGRVNUX0JBU0VOQU1FIiwiTUFOSUZFU1RfUkVMQVRJVkVfUEFUSCIsImpvaW4iLCJPTERfVkVSU0lPTl9SRUdFWCIsImhhc0FybW9yRGVwZW5kZW5jeSIsImN3ZCIsIkJvb2xlYW4iLCJmaW5kQXJtb3JEZXBlbmRlbmN5UGFja2FnZSIsIl8iLCJtZW1vaXplIiwicHJvY2VzcyIsInJlYWRQa2ciLCJwa2dQYXRoIiwiX3JlZiIsIl9wa2ckZGVwZW5kZW5jaWVzJGFybSIsIl9wa2ckZGVwZW5kZW5jaWVzIiwiX3BrZyRkZXZEZXBlbmRlbmNpZXMiLCJfcGtnJHBlZXJEZXBlbmRlbmNpZXMiLCJwa2ciLCJyZWFkUGFja2FnZUluRGlyIiwidmVyc2lvbiIsImRlcGVuZGVuY2llcyIsImFybW9yIiwiZGV2RGVwZW5kZW5jaWVzIiwicGVlckRlcGVuZGVuY2llcyIsInRlc3QiLCJTdHJpbmciLCJ1bmRlZmluZWQiLCJwa2dEaXIiLCJqc29uIiwibGlzdCIsIm5wbSIsImV4ZWMiLCJfcGtnRGlyIiwiX3JlYWRQYWNrYWdlSW5EaXIiLCJub3JtYWxpemUiLCJyZXNvbHZlQXJtb3JIb21lIiwiX3Jlc29sdmVBcm1vckhvbWUiLCJpc0Fic29sdXRlIiwiVHlwZUVycm9yIiwiZW52IiwiQVJNT1JfSE9NRSIsInJlc29sdmVNYW5pZmVzdFBhdGgiLCJfcmVzb2x2ZU1hbmlmZXN0UGF0aCIsImFybW9ySG9tZSIsIl9hcm1vckhvbWUiXSwic291cmNlUm9vdCI6Ii4uLy4uIiwic291cmNlcyI6WyJsaWIvZW52LmpzIl0sInNvdXJjZXNDb250ZW50IjpbIi8vIEB0cy1jaGVja1xuaW1wb3J0IF8gZnJvbSAnbG9kYXNoJztcbmltcG9ydCB7aG9tZWRpcn0gZnJvbSAnb3MnO1xuaW1wb3J0IHBhdGggZnJvbSAncGF0aCc7XG5pbXBvcnQgcmVhZFBrZyBmcm9tICdyZWFkLXBrZyc7XG5pbXBvcnQge25wbX0gZnJvbSAnLi9ucG0nO1xuXG4vKipcbiAqIFBhdGggdG8gdGhlIGRlZmF1bHQgYEFSTU9SX0hPTUVgIGRpciAoYH4vLmFybW9yYCkuXG4gKiBAdHlwZSB7c3RyaW5nfVxuICovXG5leHBvcnQgY29uc3QgREVGQVVMVF9BUk1PUl9IT01FID0gcGF0aC5yZXNvbHZlKGhvbWVkaXIoKSwgJy5hcm1vcicpO1xuXG4vKipcbiAqIEJhc2VuYW1lIG9mIGV4dGVuc2lvbiBtYW5pZmVzdCBmaWxlLlxuICogQHR5cGUge3N0cmluZ31cbiAqL1xuZXhwb3J0IGNvbnN0IE1BTklGRVNUX0JBU0VOQU1FID0gJ2V4dGVuc2lvbnMueWFtbCc7XG5cbi8qKlxuICogUmVsYXRpdmUgcGF0aCB0byBleHRlbnNpb24gbWFuaWZlc3QgZmlsZSBmcm9tIGBBUk1PUl9IT01FYC5cbiAqIEB0eXBlIHtzdHJpbmd9XG4gKi9cbmV4cG9ydCBjb25zdCBNQU5JRkVTVF9SRUxBVElWRV9QQVRIID0gcGF0aC5qb2luKFxuICAnbm9kZV9tb2R1bGVzJyxcbiAgJy5jYWNoZScsXG4gICdhcm1vcicsXG4gIE1BTklGRVNUX0JBU0VOQU1FXG4pO1xuXG5jb25zdCBPTERfVkVSU0lPTl9SRUdFWCA9IC9eWzAxXS87XG5cbi8qKlxuICogUmVzb2x2ZXMgYHRydWVgIGlmIGFuIGBhcm1vcmAgZGVwZW5kZW5jeSBjYW4gYmUgZm91bmQgc29tZXdoZXJlIGluIHRoZSBnaXZlbiBgY3dkYC5cbiAqXG4gKiBAcGFyYW0ge3N0cmluZ30gY3dkXG4gKiBAcmV0dXJucyB7UHJvbWlzZTxib29sZWFuPn1cbiAqL1xuZXhwb3J0IGFzeW5jIGZ1bmN0aW9uIGhhc0FybW9yRGVwZW5kZW5jeSAoY3dkKSB7XG4gIHJldHVybiBCb29sZWFuKGF3YWl0IGZpbmRBcm1vckRlcGVuZGVuY3lQYWNrYWdlKGN3ZCkpO1xufVxuXG4vKipcbiAqIEdpdmVuIGBjd2RgLCB1c2UgYG5wbWAgdG8gZmluZCB0aGUgY2xvc2VzdCBwYWNrYWdlIF9vciB3b3Jrc3BhY2Ugcm9vdF8sIGFuZCByZXR1cm4gdGhlIHBhdGggaWYgdGhlIHJvb3QgZGVwZW5kcyB1cG9uIGBhcm1vcmAuXG4gKlxuICogTG9va3MgYXQgYGRlcGVuZGVuY2llc2AgYW5kIGBkZXZEZXBlbmRlbmNpZXNgIGZvciBgYXJtb3JgLlxuICovXG5leHBvcnQgY29uc3QgZmluZEFybW9yRGVwZW5kZW5jeVBhY2thZ2UgPSBfLm1lbW9pemUoXG4gIC8qKlxuICAgKiBAcGFyYW0ge3N0cmluZ30gW2N3ZF1cbiAgICogQHJldHVybnMge1Byb21pc2U8c3RyaW5nfHVuZGVmaW5lZD59XG4gICAqL1xuICBhc3luYyAoY3dkID0gcHJvY2Vzcy5jd2QoKSkgPT4ge1xuICAgIC8qKlxuICAgICAqIFRyaWVzIHRvIHJlYWQgYHBhY2thZ2UuanNvbmAgaW4gYGN3ZGAgYW5kIHJlc29sdmVzIHRoZSBpZGVudGl0eSBpZiBpdCBkZXBlbmRzIG9uIGBhcm1vcmA7XG4gICAgICogb3RoZXJ3aXNlIHJlc29sdmVzIGB1bmRlZmluZWRgLlxuICAgICAqIEBwYXJhbSB7c3RyaW5nfSBjd2RcbiAgICAgKiBAcmV0dXJucyB7UHJvbWlzZTxzdHJpbmd8dW5kZWZpbmVkPn1cbiAgICAgKi9cbiAgICBjb25zdCByZWFkUGtnID0gYXN5bmMgKGN3ZCkgPT4ge1xuICAgICAgLyoqIEB0eXBlIHtzdHJpbmd8dW5kZWZpbmVkfSAqL1xuICAgICAgbGV0IHBrZ1BhdGg7XG4gICAgICB0cnkge1xuICAgICAgICBjb25zdCBwa2cgPSBhd2FpdCByZWFkUGFja2FnZUluRGlyKGN3ZCk7XG4gICAgICAgIGNvbnN0IHZlcnNpb24gPVxuICAgICAgICAgIHBrZz8uZGVwZW5kZW5jaWVzPy5hcm1vciA/P1xuICAgICAgICAgIHBrZz8uZGV2RGVwZW5kZW5jaWVzPy5hcm1vciA/P1xuICAgICAgICAgIHBrZz8ucGVlckRlcGVuZGVuY2llcz8uYXJtb3I7XG4gICAgICAgIHBrZ1BhdGggPSB2ZXJzaW9uICYmICFPTERfVkVSU0lPTl9SRUdFWC50ZXN0KFN0cmluZyh2ZXJzaW9uKSkgPyBjd2QgOiB1bmRlZmluZWQ7XG4gICAgICB9IGNhdGNoIHt9XG4gICAgICByZXR1cm4gcGtnUGF0aDtcbiAgICB9O1xuXG4gICAgY3dkID0gcGF0aC5yZXNvbHZlKGN3ZCk7XG5cbiAgICAvKiogQHR5cGUge3N0cmluZ30gKi9cbiAgICBsZXQgcGtnRGlyO1xuICAgIHRyeSB7XG4gICAgICBjb25zdCB7anNvbjogbGlzdH0gPSBhd2FpdCBucG0uZXhlYygnbGlzdCcsIFsnLS1sb25nJywgJy0tanNvbiddLCB7Y3dkfSk7XG4gICAgICAoe3BhdGg6IHBrZ0Rpcn0gPSBsaXN0KTtcbiAgICAgIGlmIChwa2dEaXIgIT09IGN3ZCkge1xuICAgICAgICBwa2dEaXIgPSBwa2dEaXIgPz8gY3dkO1xuICAgICAgfVxuICAgIH0gY2F0Y2gge1xuICAgICAgcGtnRGlyID0gY3dkO1xuICAgIH1cbiAgICByZXR1cm4gYXdhaXQgcmVhZFBrZyhwa2dEaXIpO1xuICB9XG4pO1xuXG4vKipcbiAqIFJlYWQgYSBgcGFja2FnZS5qc29uYCBpbiBkaXIgYGN3ZGAuICBJZiBub25lIGZvdW5kLCByZXR1cm4gYHVuZGVmaW5lZGAuXG4gKi9cbmV4cG9ydCBjb25zdCByZWFkUGFja2FnZUluRGlyID0gXy5tZW1vaXplKFxuICAvKipcbiAgICpcbiAgICogQHBhcmFtIHtzdHJpbmd9IGN3ZCAtIERpcmVjdG9yeSBvc3RlbnNpYmx5IGhhdmluZyBhIGBwYWNrYWdlLmpzb25gXG4gICAqIEByZXR1cm5zIHtQcm9taXNlPGltcG9ydCgncmVhZC1wa2cnKS5Ob3JtYWxpemVkUGFja2FnZUpzb258dW5kZWZpbmVkPn1cbiAgICovXG4gIGFzeW5jIGZ1bmN0aW9uIF9yZWFkUGFja2FnZUluRGlyIChjd2QpIHtcbiAgICByZXR1cm4gYXdhaXQgcmVhZFBrZyh7Y3dkLCBub3JtYWxpemU6IHRydWV9KTtcbiAgfVxuKTtcblxuLyoqXG4gKiBEZXRlcm1pbmVzIGxvY2F0aW9uIG9mIEFybW9yJ3MgXCJob21lXCIgZGlyXG4gKlxuICogLSBJZiBgQVJNT1JfSE9NRWAgaXMgc2V0IGluIHRoZSBlbnZpcm9ubWVudCwgdXNlIHRoYXRcbiAqIC0gSWYgd2UgZmluZCBhIGBwYWNrYWdlLmpzb25gIGluIG9yIGFib3ZlIGBjd2RgIGFuZCBpdCBoYXMgYW4gYGFybW9yYCBkZXBlbmRlbmN5LCB1c2UgdGhhdC5cbiAqXG4gKiBBbGwgcmV0dXJuZWQgcGF0aHMgd2lsbCBiZSBhYnNvbHV0ZS5cbiAqL1xuZXhwb3J0IGNvbnN0IHJlc29sdmVBcm1vckhvbWUgPSBfLm1lbW9pemUoXG4gIC8qKlxuICAgKiBAcGFyYW0ge3N0cmluZ30gW2N3ZF0gLSBDdXJyZW50IHdvcmtpbmcgZGlyZWN0b3J5LiAgX011c3RfIGJlIGFic29sdXRlLCBpZiBzcGVjaWZpZWQuXG4gICAqIEByZXR1cm5zIHtQcm9taXNlPHN0cmluZz59XG4gICAqL1xuICBhc3luYyBmdW5jdGlvbiBfcmVzb2x2ZUFybW9ySG9tZSAoY3dkID0gcHJvY2Vzcy5jd2QoKSkge1xuICAgIGlmICghcGF0aC5pc0Fic29sdXRlKGN3ZCkpIHtcbiAgICAgIHRocm93IG5ldyBUeXBlRXJyb3IoJ2Bjd2RgIHBhcmFtZXRlciBtdXN0IGJlIGFuIGFic29sdXRlIHBhdGgnKTtcbiAgICB9XG5cbiAgICBpZiAocHJvY2Vzcy5lbnYuQVJNT1JfSE9NRSkge1xuICAgICAgcmV0dXJuIHBhdGgucmVzb2x2ZShjd2QsIHByb2Nlc3MuZW52LkFSTU9SX0hPTUUpO1xuICAgIH1cblxuICAgIGNvbnN0IHBrZ1BhdGggPSBhd2FpdCBmaW5kQXJtb3JEZXBlbmRlbmN5UGFja2FnZShjd2QpO1xuICAgIGlmIChwa2dQYXRoKSB7XG4gICAgICByZXR1cm4gcGtnUGF0aDtcbiAgICB9XG4gICAgcmV0dXJuIERFRkFVTFRfQVJNT1JfSE9NRTtcbiAgfVxuKTtcblxuLyoqXG4gKiBGaWd1cmUgb3V0IG1hbmlmZXN0IHBhdGggYmFzZWQgb24gYGFybW9ySG9tZWAuXG4gKlxuICogVGhlIGFzc3VtcHRpb24gaXMgdGhhdCwgaWYgYGFybW9ySG9tZWAgaGFzIGJlZW4gcHJvdmlkZWQsIGl0IHdhcyByZXNvbHZlZCB2aWEge0BsaW5rIHJlc29sdmVBcm1vckhvbWUgYHJlc29sdmVBcm1vckhvbWUoKWB9ISAgSWYgdW5zdXJlLFxuICogZG9uJ3QgcGFzcyBhIHBhcmFtZXRlciBhbmQgbGV0IGByZXNvbHZlQXJtb3JIb21lKClgIGhhbmRsZSBpdC5cbiAqL1xuZXhwb3J0IGNvbnN0IHJlc29sdmVNYW5pZmVzdFBhdGggPSBfLm1lbW9pemUoXG4gIC8qKlxuICAgKiBAcGFyYW0ge3N0cmluZ30gW2FybW9ySG9tZV0gLSBBcm1vciBob21lIGRpcmVjdG9yeVxuICAgKiBAcmV0dXJucyB7UHJvbWlzZTxzdHJpbmc+fVxuICAgKi9cbiAgYXN5bmMgZnVuY3Rpb24gX3Jlc29sdmVNYW5pZmVzdFBhdGggKGFybW9ySG9tZSkge1xuICAgIC8vIGNhbiB5b3UgXCJhd2FpdFwiIGluIGEgZGVmYXVsdCBwYXJhbWV0ZXI/IGlzIHRoYXQgYSBnb29kIGlkZWE/XG4gICAgYXJtb3JIb21lID0gYXJtb3JIb21lID8/IChhd2FpdCByZXNvbHZlQXJtb3JIb21lKCkpO1xuICAgIHJldHVybiBwYXRoLmpvaW4oYXJtb3JIb21lLCBNQU5JRkVTVF9SRUxBVElWRV9QQVRIKTtcbiAgfVxuKTtcblxuLyoqXG4gKiBAdHlwZWRlZiB7aW1wb3J0KCdyZWFkLXBrZycpLk5vcm1hbGl6ZWRQYWNrYWdlSnNvbn0gTm9ybWFsaXplZFBhY2thZ2VKc29uXG4gKi9cbiJdLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7OztBQUNBLElBQUFBLE9BQUEsR0FBQUMsc0JBQUEsQ0FBQUMsT0FBQTtBQUNBLElBQUFDLEdBQUEsR0FBQUQsT0FBQTtBQUNBLElBQUFF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
+/**
+ * Figure out manifest path based on `armorHome`.
+ *
+ * The assumption is that, if `armorHome` has been provided, it was resolved via {@link resolveArmorHome `resolveArmorHome()`}!  If unsure,
+ * don't pass a parameter and let `resolveArmorHome()` handle it.
+ */
+exports.resolveManifestPath = lodash_1.default.memoize(
+/**
+ * @param {string} [armorHome] - Armor home directory
+ * @returns {Promise<string>}
+ */
+async function _resolveManifestPath(armorHome) {
+    // can you "await" in a default parameter? is that a good idea?
+    armorHome = armorHome ?? (await (0, exports.resolveArmorHome)());
+    return path_1.default.join(armorHome, exports.MANIFEST_RELATIVE_PATH);
+});
+/**
+ * @typedef {import('read-pkg').NormalizedPackageJson} NormalizedPackageJson
+ */
+//# sourceMappingURL=env.js.map

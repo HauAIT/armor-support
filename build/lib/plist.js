@@ -1,125 +1,169 @@
 "use strict";
-
-var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault");
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.createBinaryPlist = createBinaryPlist;
-exports.createPlist = createPlist;
-exports.parseBinaryPlist = parseBinaryPlist;
-exports.parsePlist = parsePlist;
-exports.parsePlistFile = parsePlistFile;
-exports.updatePlistFile = updatePlistFile;
-require("source-map-support/register");
-var _plist = _interopRequireDefault(require("plist"));
-var _bplistCreator = _interopRequireDefault(require("bplist-creator"));
-var _bplistParser = _interopRequireDefault(require("bplist-parser"));
-var _fs = _interopRequireDefault(require("./fs"));
-var _logger = _interopRequireDefault(require("./logger"));
-var _lodash = _interopRequireDefault(require("lodash"));
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.parseBinaryPlist = exports.createBinaryPlist = exports.updatePlistFile = exports.createPlist = exports.parsePlist = exports.parsePlistFile = void 0;
+const plist_1 = __importDefault(require("plist"));
+const bplist_creator_1 = __importDefault(require("bplist-creator"));
+const bplist_parser_1 = __importDefault(require("bplist-parser"));
+const fs_1 = __importDefault(require("./fs"));
+const logger_1 = __importDefault(require("./logger"));
+const lodash_1 = __importDefault(require("lodash"));
 const BPLIST_IDENTIFIER = {
-  BUFFER: Buffer.from('bplist00'),
-  TEXT: 'bplist00'
+    BUFFER: Buffer.from('bplist00'),
+    TEXT: 'bplist00',
 };
 const PLIST_IDENTIFIER = {
-  BUFFER: Buffer.from('<'),
-  TEXT: '<'
+    BUFFER: Buffer.from('<'),
+    TEXT: '<',
 };
+// XML Plist library helper
 async function parseXmlPlistFile(plistFilename) {
-  let xmlContent = await _fs.default.readFile(plistFilename, 'utf8');
-  return _plist.default.parse(xmlContent);
+    let xmlContent = await fs_1.default.readFile(plistFilename, 'utf8');
+    return plist_1.default.parse(xmlContent);
 }
+/**
+ * Parses a file in xml or binary format of plist
+ * @param {string} plist The plist file path
+ * @param {boolean} mustExist If set to false, this method will return an empty object when the file doesn't exist
+ * @param {boolean} quiet If set to false, the plist path will be logged in debug level
+ * @returns {Promise<any>} parsed plist JS Object
+ */
 async function parsePlistFile(plist, mustExist = true, quiet = true) {
-  if (!(await _fs.default.exists(plist))) {
-    if (mustExist) {
-      _logger.default.errorAndThrow(`Plist file doesn't exist: '${plist}'`);
-    } else {
-      _logger.default.debug(`Plist file '${plist}' does not exist. Returning an empty plist.`);
-      return {};
+    // handle nonexistant file
+    if (!(await fs_1.default.exists(plist))) {
+        if (mustExist) {
+            logger_1.default.errorAndThrow(`Plist file doesn't exist: '${plist}'`);
+        }
+        else {
+            logger_1.default.debug(`Plist file '${plist}' does not exist. Returning an empty plist.`);
+            return {};
+        }
     }
-  }
-  let obj = {};
-  let type = 'binary';
-  try {
-    obj = await _bplistParser.default.parseFile(plist);
-    if (obj.length) {
-      obj = obj[0];
-    } else {
-      throw new Error(`Binary file '${plist}'' appears to be empty`);
-    }
-  } catch (ign) {
+    let obj = {};
+    let type = 'binary';
     try {
-      obj = await parseXmlPlistFile(plist);
-      type = 'xml';
-    } catch (err) {
-      _logger.default.errorAndThrow(`Could not parse plist file '${plist}' as XML: ${err.message}`);
+        obj = await bplist_parser_1.default.parseFile(plist);
+        if (obj.length) {
+            obj = obj[0];
+        }
+        else {
+            throw new Error(`Binary file '${plist}'' appears to be empty`);
+        }
     }
-  }
-  if (!quiet) {
-    _logger.default.debug(`Parsed plist file '${plist}' as ${type}`);
-  }
-  return obj;
+    catch (ign) {
+        try {
+            obj = await parseXmlPlistFile(plist);
+            type = 'xml';
+        }
+        catch (err) {
+            logger_1.default.errorAndThrow(`Could not parse plist file '${plist}' as XML: ${err.message}`);
+        }
+    }
+    if (!quiet) {
+        logger_1.default.debug(`Parsed plist file '${plist}' as ${type}`);
+    }
+    return obj;
 }
+exports.parsePlistFile = parsePlistFile;
+/**
+ * Updates a plist file with the given fields
+ * @param {string} plist The plist file path
+ * @param {Object} updatedFields The updated fields-value pairs
+ * @param {boolean} binary If set to false, the file will be created as a xml plist
+ * @param {boolean} mustExist If set to false, this method will update an empty plist
+ * @param {boolean} quiet If set to false, the plist path will be logged in debug level
+ */
 async function updatePlistFile(plist, updatedFields, binary = true, mustExist = true, quiet = true) {
-  let obj;
-  try {
-    obj = await parsePlistFile(plist, mustExist);
-  } catch (err) {
-    _logger.default.errorAndThrow(`Could not update plist: ${err.message}`);
-  }
-  _lodash.default.extend(obj, updatedFields);
-  let newPlist = binary ? (0, _bplistCreator.default)(obj) : _plist.default.build(obj);
-  try {
-    await _fs.default.writeFile(plist, newPlist);
-  } catch (err) {
-    _logger.default.errorAndThrow(`Could not save plist: ${err.message}`);
-  }
-  if (!quiet) {
-    _logger.default.debug(`Wrote plist file '${plist}'`);
-  }
+    let obj;
+    try {
+        obj = await parsePlistFile(plist, mustExist);
+    }
+    catch (err) {
+        logger_1.default.errorAndThrow(`Could not update plist: ${err.message}`);
+    }
+    lodash_1.default.extend(obj, updatedFields);
+    let newPlist = binary ? (0, bplist_creator_1.default)(obj) : plist_1.default.build(obj);
+    try {
+        await fs_1.default.writeFile(plist, newPlist);
+    }
+    catch (err) {
+        logger_1.default.errorAndThrow(`Could not save plist: ${err.message}`);
+    }
+    if (!quiet) {
+        logger_1.default.debug(`Wrote plist file '${plist}'`);
+    }
 }
+exports.updatePlistFile = updatePlistFile;
+/**
+ * Creates a binary plist Buffer from an object
+ * @param {Object} data The object to be turned into a binary plist
+ * @returns {Buffer} plist in the form of a binary buffer
+ */
 function createBinaryPlist(data) {
-  return (0, _bplistCreator.default)(data);
+    return (0, bplist_creator_1.default)(data);
 }
+exports.createBinaryPlist = createBinaryPlist;
+/**
+ * Parses a Buffer into an Object
+ * @param {Buffer} data The beffer of a binary plist
+ */
 function parseBinaryPlist(data) {
-  return _bplistParser.default.parseBuffer(data);
+    return bplist_parser_1.default.parseBuffer(data);
 }
+exports.parseBinaryPlist = parseBinaryPlist;
 function getXmlPlist(data) {
-  if (_lodash.default.isString(data) && data.startsWith(PLIST_IDENTIFIER.TEXT)) {
-    return data;
-  }
-  if (_lodash.default.isBuffer(data) && PLIST_IDENTIFIER.BUFFER.compare(data, 0, PLIST_IDENTIFIER.BUFFER.length) === 0) {
-    return data.toString();
-  }
-  return null;
+    if (lodash_1.default.isString(data) && data.startsWith(PLIST_IDENTIFIER.TEXT)) {
+        return data;
+    }
+    if (lodash_1.default.isBuffer(data) &&
+        PLIST_IDENTIFIER.BUFFER.compare(data, 0, PLIST_IDENTIFIER.BUFFER.length) === 0) {
+        return data.toString();
+    }
+    return null;
 }
 function getBinaryPlist(data) {
-  if (_lodash.default.isString(data) && data.startsWith(BPLIST_IDENTIFIER.TEXT)) {
-    return Buffer.from(data);
-  }
-  if (_lodash.default.isBuffer(data) && BPLIST_IDENTIFIER.BUFFER.compare(data, 0, BPLIST_IDENTIFIER.BUFFER.length) === 0) {
-    return data;
-  }
-  return null;
+    if (lodash_1.default.isString(data) && data.startsWith(BPLIST_IDENTIFIER.TEXT)) {
+        return Buffer.from(data);
+    }
+    if (lodash_1.default.isBuffer(data) &&
+        BPLIST_IDENTIFIER.BUFFER.compare(data, 0, BPLIST_IDENTIFIER.BUFFER.length) === 0) {
+        return data;
+    }
+    return null;
 }
+/**
+ * Creates a plist from an object
+ * @param {Object} object The JS object to be turned into a plist
+ * @param {boolean} binary Set it to true for a binary plist
+ * @returns {string|Buffer} returns a buffer or a string in respect to the binary parameter
+ */
 function createPlist(object, binary = false) {
-  if (binary) {
-    return createBinaryPlist(object);
-  } else {
-    return _plist.default.build(object);
-  }
+    if (binary) {
+        return createBinaryPlist(object);
+    }
+    else {
+        return plist_1.default.build(object);
+    }
 }
+exports.createPlist = createPlist;
+/**
+ * Parses an buffer or a string to a JS object a plist from an object
+ * @param {string|Buffer} data The plist in the form of string or Buffer
+ * @returns {Object} parsed plist JS Object
+ * @throws Will throw an error if the plist type is unknown
+ */
 function parsePlist(data) {
-  let textPlist = getXmlPlist(data);
-  if (textPlist) {
-    return _plist.default.parse(textPlist);
-  }
-  let binaryPlist = getBinaryPlist(data);
-  if (binaryPlist) {
-    return parseBinaryPlist(binaryPlist)[0];
-  }
-  throw new Error(`Unknown type of plist, data: ${data.toString()}`);
-}require('source-map-support').install();
-
-
-//# sourceMappingURL=data:application/json;charset=utf8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoibGliL3BsaXN0LmpzIiwibmFtZXMiOlsiX3BsaXN0IiwiX2ludGVyb3BSZXF1aXJlRGVmYXVsdCIsInJlcXVpcmUiLCJfYnBsaXN0Q3JlYXRvciIsIl9icGxpc3RQYXJzZXIiLCJfZnMiLCJfbG9nZ2VyIiwiX2xvZGFzaCIsIkJQTElTVF9JREVOVElGSUVSIiwiQlVGRkVSIiwiQnVmZmVyIiwiZnJvbSIsIlRFWFQiLCJQTElTVF9JREVOVElGSUVSIiwicGFyc2VYbWxQbGlzdEZpbGUiLCJwbGlzdEZpbGVuYW1lIiwieG1sQ29udGVudCIsImZzIiwicmVhZEZpbGUiLCJ4bWxwbGlzdCIsInBhcnNlIiwicGFyc2VQbGlzdEZpbGUiLCJwbGlzdCIsIm11c3RFeGlzdCIsInF1aWV0IiwiZXhpc3RzIiwibG9nIiwiZXJyb3JBbmRUaHJvdyIsImRlYnVnIiwib2JqIiwidHlwZSIsImJwbGlzdFBhcnNlIiwicGFyc2VGaWxlIiwibGVuZ3RoIiwiRXJyb3IiLCJpZ24iLCJlcnIiLCJtZXNzYWdlIiwidXBkYXRlUGxpc3RGaWxlIiwidXBkYXRlZEZpZWxkcyIsImJpbmFyeSIsIl8iLCJleHRlbmQiLCJuZXdQbGlzdCIsImJwbGlzdENyZWF0ZSIsImJ1aWxkIiwid3JpdGVGaWxlIiwiY3JlYXRlQmluYXJ5UGxpc3QiLCJkYXRhIiwicGFyc2VCaW5hcnlQbGlzdCIsInBhcnNlQnVmZmVyIiwiZ2V0WG1sUGxpc3QiLCJpc1N0cmluZyIsInN0YXJ0c1dpdGgiLCJpc0J1ZmZlciIsImNvbXBhcmUiLCJ0b1N0cmluZyIsImdldEJpbmFyeVBsaXN0IiwiY3JlYXRlUGxpc3QiLCJvYmplY3QiLCJwYXJzZVBsaXN0IiwidGV4dFBsaXN0IiwiYmluYXJ5UGxpc3QiXSwic291cmNlUm9vdCI6Ii4uLy4uIiwic291cmNlcyI6WyJsaWIvcGxpc3QuanMiXSwic291cmNlc0NvbnRlbnQiOlsiaW1wb3J0IHhtbHBsaXN0IGZyb20gJ3BsaXN0JztcbmltcG9ydCBicGxpc3RDcmVhdGUgZnJvbSAnYnBsaXN0LWNyZWF0b3InO1xuaW1wb3J0IGJwbGlzdFBhcnNlIGZyb20gJ2JwbGlzdC1wYXJzZXInO1xuaW1wb3J0IGZzIGZyb20gJy4vZnMnO1xuaW1wb3J0IGxvZyBmcm9tICcuL2xvZ2dlcic7XG5pbXBvcnQgXyBmcm9tICdsb2Rhc2gnO1xuXG5jb25zdCBCUExJU1RfSURFTlRJRklFUiA9IHtcbiAgQlVGRkVSOiBCdWZmZXIuZnJvbSgnYnBsaXN0MDAnKSxcbiAgVEVYVDogJ2JwbGlzdDAwJyxcbn07XG5jb25zdCBQTElTVF9JREVOVElGSUVSID0ge1xuICBCVUZGRVI6IEJ1ZmZlci5mcm9tKCc8JyksXG4gIFRFWFQ6ICc8Jyxcbn07XG5cbi8vIFhNTCBQbGlzdCBsaWJyYXJ5IGhlbHBlclxuYXN5bmMgZnVuY3Rpb24gcGFyc2VYbWxQbGlzdEZpbGUgKHBsaXN0RmlsZW5hbWUpIHtcbiAgbGV0IHhtbENvbnRlbnQgPSBhd2FpdCBmcy5yZWFkRmlsZShwbGlzdEZpbGVuYW1lLCAndXRmOCcpO1xuICByZXR1cm4geG1scGxpc3QucGFyc2UoeG1sQ29udGVudCk7XG59XG5cbi8qKlxuICogUGFyc2VzIGEgZmlsZSBpbiB4bWwgb3IgYmluYXJ5IGZvcm1hdCBvZiBwbGlzdFxuICogQHBhcmFtIHtzdHJpbmd9IHBsaXN0IFRoZSBwbGlzdCBmaWxlIHBhdGhcbiAqIEBwYXJhbSB7Ym9vbGVhbn0gbXVzdEV4aXN0IElmIHNldCB0byBmYWxzZSwgdGhpcyBtZXRob2Qgd2lsbCByZXR1cm4gYW4gZW1wdHkgb2JqZWN0IHdoZW4gdGhlIGZpbGUgZG9lc24ndCBleGlzdFxuICogQHBhcmFtIHtib29sZWFufSBxdWlldCBJZiBzZXQgdG8gZmFsc2UsIHRoZSBwbGlzdCBwYXRoIHdpbGwgYmUgbG9nZ2VkIGluIGRlYnVnIGxldmVsXG4gKiBAcmV0dXJucyB7UHJvbWlzZTxhbnk+fSBwYXJzZWQgcGxpc3QgSlMgT2JqZWN0XG4gKi9cbmFzeW5jIGZ1bmN0aW9uIHBhcnNlUGxpc3RGaWxlIChwbGlzdCwgbXVzdEV4aXN0ID0gdHJ1ZSwgcXVpZXQgPSB0cnVlKSB7XG4gIC8vIGhhbmRsZSBub25leGlzdGFudCBmaWxlXG4gIGlmICghKGF3YWl0IGZzLmV4aXN0cyhwbGlzdCkpKSB7XG4gICAgaWYgKG11c3RFeGlzdCkge1xuICAgICAgbG9nLmVycm9yQW5kVGhyb3coYFBsaXN0IGZpbGUgZG9lc24ndCBleGlzdDogJyR7cGxpc3R9J2ApO1xuICAgIH0gZWxzZSB7XG4gICAgICBsb2cuZGVidWcoYFBsaXN0IGZpbGUgJyR7cGxpc3R9JyBkb2VzIG5vdCBleGlzdC4gUmV0dXJuaW5nIGFuIGVtcHR5IHBsaXN0LmApO1xuICAgICAgcmV0dXJuIHt9O1xuICAgIH1cbiAgfVxuXG4gIGxldCBvYmogPSB7fTtcbiAgbGV0IHR5cGUgPSAnYmluYXJ5JztcbiAgdHJ5IHtcbiAgICBvYmogPSBhd2FpdCBicGxpc3RQYXJzZS5wYXJzZUZpbGUocGxpc3QpO1xuICAgIGlmIChvYmoubGVuZ3RoKSB7XG4gICAgICBvYmogPSBvYmpbMF07XG4gICAgfSBlbHNlIHtcbiAgICAgIHRocm93IG5ldyBFcnJvcihgQmluYXJ5IGZpbGUgJyR7cGxpc3R9JycgYXBwZWFycyB0byBiZSBlbXB0eWApO1xuICAgIH1cbiAgfSBjYXRjaCAoaWduKSB7XG4gICAgdHJ5IHtcbiAgICAgIG9iaiA9IGF3YWl0IHBhcnNlWG1sUGxpc3RGaWxlKHBsaXN0KTtcbiAgICAgIHR5cGUgPSAneG1sJztcbiAgICB9IGNhdGNoIChlcnIpIHtcbiAgICAgIGxvZy5lcnJvckFuZFRocm93KGBDb3VsZCBub3QgcGFyc2UgcGxpc3QgZmlsZSAnJHtwbGlzdH0nIGFzIFhNTDogJHtlcnIubWVzc2FnZX1gKTtcbiAgICB9XG4gIH1cblxuICBpZiAoIXF1aWV0KSB7XG4gICAgbG9nLmRlYnVnKGBQYXJzZWQgcGxpc3QgZmlsZSAnJHtwbGlzdH0nIGFzICR7dHlwZX1gKTtcbiAgfVxuICByZXR1cm4gb2JqO1xufVxuXG4vKipcbiAqIFVwZGF0ZXMgYSBwbGlzdCBmaWxlIHdpdGggdGhlIGdpdmVuIGZpZWxkc1xuICogQHBhcmFtIHtzdHJpbmd9IHBsaXN0IFRoZSBwbGlzdCBmaWxlIHBhdGhcbiAqIEBwYXJhbSB7T2JqZWN0fSB1cGRhdGVkRmllbGRzIFRoZSB1cGRhdGVkIGZpZWxkcy12YWx1ZSBwYWlyc1xuICogQHBhcmFtIHtib29sZWFufSBiaW5hcnkgSWYgc2V0IHRvIGZhbHNlLCB0aGUgZmlsZSB3aWxsIGJlIGNyZWF0ZWQgYXMgYSB4bWwgcGxpc3RcbiAqIEBwYXJhbSB7Ym9vbGVhbn0gbXVzdEV4aXN0IElmIHNldCB0byBmYWxzZSwgdGhpcyBtZXRob2Qgd2lsbCB1cGRhdGUgYW4gZW1wdHkgcGxpc3RcbiAqIEBwYXJhbSB7Ym9vbGVhbn0gcXVpZXQgSWYgc2V0IHRvIGZhbHNlLCB0aGUgcGxpc3QgcGF0aCB3aWxsIGJlIGxvZ2dlZCBpbiBkZWJ1ZyBsZXZlbFxuICovXG5hc3luYyBmdW5jdGlvbiB1cGRhdGVQbGlzdEZpbGUgKFxuICBwbGlzdCxcbiAgdXBkYXRlZEZpZWxkcyxcbiAgYmluYXJ5ID0gdHJ1ZSxcbiAgbXVzdEV4aXN0ID0gdHJ1ZSxcbiAgcXVpZXQgPSB0cnVlXG4pIHtcbiAgbGV0IG9iajtcbiAgdHJ5IHtcbiAgICBvYmogPSBhd2FpdCBwYXJzZVBsaXN0RmlsZShwbGlzdCwgbXVzdEV4aXN0KTtcbiAgfSBjYXRjaCAoZXJyKSB7XG4gICAgbG9nLmVycm9yQW5kVGhyb3coYENvdWxkIG5vdCB1cGRhdGUgcGxpc3Q6ICR7ZXJyLm1lc3NhZ2V9YCk7XG4gIH1cbiAgXy5leHRlbmQob2JqLCB1cGRhdGVkRmllbGRzKTtcbiAgbGV0IG5ld1BsaXN0ID0gYmluYXJ5ID8gYnBsaXN0Q3JlYXRlKG9iaikgOiB4bWxwbGlzdC5idWlsZChvYmopO1xuICB0cnkge1xuICAgIGF3YWl0IGZzLndyaXRlRmlsZShwbGlzdCwgbmV3UGxpc3QpO1xuICB9IGNhdGNoIChlcnIpIHtcbiAgICBsb2cuZXJyb3JBbmRUaHJvdyhgQ291bGQgbm90IHNhdmUgcGxpc3Q6ICR7ZXJyLm1lc3NhZ2V9YCk7XG4gIH1cbiAgaWYgKCFxdWlldCkge1xuICAgIGxvZy5kZWJ1ZyhgV3JvdGUgcGxpc3QgZmlsZSAnJHtwbGlzdH0nYCk7XG4gIH1cbn1cbi8qKlxuICogQ3JlYXRlcyBhIGJpbmFyeSBwbGlzdCBCdWZmZXIgZnJvbSBhbiBvYmplY3RcbiAqIEBwYXJhbSB7T2JqZWN0fSBkYXRhIFRoZSBvYmplY3QgdG8gYmUgdHVybmVkIGludG8gYSBiaW5hcnkgcGxpc3RcbiAqIEByZXR1cm5zIHtCdWZmZXJ9IHBsaXN0IGluIHRoZSBmb3JtIG9mIGEgYmluYXJ5IGJ1ZmZlclxuICovXG5mdW5jdGlvbiBjcmVhdGVCaW5hcnlQbGlzdCAoZGF0YSkge1xuICByZXR1cm4gYnBsaXN0Q3JlYXRlKGRhdGEpO1xufVxuXG4vKipcbiAqIFBhcnNlcyBhIEJ1ZmZlciBpbnRvIGFuIE9iamVjdFxuICogQHBhcmFtIHtCdWZmZXJ9IGRhdGEgVGhlIGJlZmZlciBvZiBhIGJpbmFyeSBwbGlzdFxuICovXG5mdW5jdGlvbiBwYXJzZUJpbmFyeVBsaXN0IChkYXRhKSB7XG4gIHJldHVybiBicGxpc3RQYXJzZS5wYXJzZUJ1ZmZlcihkYXRhKTtcbn1cblxuZnVuY3Rpb24gZ2V0WG1sUGxpc3QgKGRhdGEpIHtcbiAgaWYgKF8uaXNTdHJpbmcoZGF0YSkgJiYgZGF0YS5zdGFydHNXaXRoKFBMSVNUX0lERU5USUZJRVIuVEVYVCkpIHtcbiAgICByZXR1cm4gZGF0YTtcbiAgfVxuICBpZiAoXG4gICAgXy5pc0J1ZmZlcihkYXRhKSAmJlxuICAgIFBMSVNUX0lERU5USUZJRVIuQlVGRkVSLmNvbXBhcmUoZGF0YSwgMCwgUExJU1RfSURFTlRJRklFUi5CVUZGRVIubGVuZ3RoKSA9PT0gMFxuICApIHtcbiAgICByZXR1cm4gZGF0YS50b1N0cmluZygpO1xuICB9XG4gIHJldHVybiBudWxsO1xufVxuXG5mdW5jdGlvbiBnZXRCaW5hcnlQbGlzdCAoZGF0YSkge1xuICBpZiAoXy5pc1N0cmluZyhkYXRhKSAmJiBkYXRhLnN0YXJ0c1dpdGgoQlBMSVNUX0lERU5USUZJRVIuVEVYVCkpIHtcbiAgICByZXR1cm4gQnVmZmVyLmZyb20oZGF0YSk7XG4gIH1cblxuICBpZiAoXG4gICAgXy5pc0J1ZmZlcihkYXRhKSAmJlxuICAgIEJQTElTVF9JREVOVElGSUVSLkJVRkZFUi5jb21wYXJlKGRhdGEsIDAsIEJQTElTVF9JREVOVElGSUVSLkJVRkZFUi5sZW5ndGgpID09PSAwXG4gICkge1xuICAgIHJldHVybiBkYXRhO1xuICB9XG4gIHJldHVybiBudWxsO1xufVxuXG4vKipcbiAqIENyZWF0ZXMgYSBwbGlzdCBmcm9tIGFuIG9iamVjdFxuICogQHBhcmFtIHtPYmplY3R9IG9iamVjdCBUaGUgSlMgb2JqZWN0IHRvIGJlIHR1cm5lZCBpbnRvIGEgcGxpc3RcbiAqIEBwYXJhbSB7Ym9vbGVhbn0gYmluYXJ5IFNldCBpdCB0byB0cnVlIGZvciBhIGJpbmFyeSBwbGlzdFxuICogQHJldHVybnMge3N0cmluZ3xCdWZmZXJ9IHJldHVybnMgYSBidWZmZXIgb3IgYSBzdHJpbmcgaW4gcmVzcGVjdCB0byB0aGUgYmluYXJ5IHBhcmFtZXRlclxuICovXG5mdW5jdGlvbiBjcmVhdGVQbGlzdCAob2JqZWN0LCBiaW5hcnkgPSBmYWxzZSkge1xuICBpZiAoYmluYXJ5KSB7XG4gICAgcmV0dXJuIGNyZWF0ZUJpbmFyeVBsaXN0KG9iamVjdCk7XG4gIH0gZWxzZSB7XG4gICAgcmV0dXJuIHhtbHBsaXN0LmJ1aWxkKG9iamVjdCk7XG4gIH1cbn1cblxuLyoqXG4gKiBQYXJzZXMgYW4gYnVmZmVyIG9yIGEgc3RyaW5nIHRvIGEgSlMgb2JqZWN0IGEgcGxpc3QgZnJvbSBhbiBvYmplY3RcbiAqIEBwYXJhbSB7c3RyaW5nfEJ1ZmZlcn0gZGF0YSBUaGUgcGxpc3QgaW4gdGhlIGZvcm0gb2Ygc3RyaW5nIG9yIEJ1ZmZlclxuICogQHJldHVybnMge09iamVjdH0gcGFyc2VkIHBsaXN0IEpTIE9iamVjdFxuICogQHRocm93cyBXaWxsIHRocm93IGFuIGVycm9yIGlmIHRoZSBwbGlzdCB0eXBlIGlzIHVua25vd25cbiAqL1xuZnVuY3Rpb24gcGFyc2VQbGlzdCAoZGF0YSkge1xuICBsZXQgdGV4dFBsaXN0ID0gZ2V0WG1sUGxpc3QoZGF0YSk7XG4gIGlmICh0ZXh0UGxpc3QpIHtcbiAgICByZXR1cm4geG1scGxpc3QucGFyc2UodGV4dFBsaXN0KTtcbiAgfVxuXG4gIGxldCBiaW5hcnlQbGlzdCA9IGdldEJpbmFyeVBsaXN0KGRhdGEpO1xuICBpZiAoYmluYXJ5UGxpc3QpIHtcbiAgICByZXR1cm4gcGFyc2VCaW5hcnlQbGlzdChiaW5hcnlQbGlzdClbMF07XG4gIH1cblxuICB0aHJvdyBuZXcgRXJyb3IoYFVua25vd24gdHlwZSBvZiBwbGlzdCwgZGF0YTogJHtkYXRhLnRvU3RyaW5nKCl9YCk7XG59XG5cbmV4cG9ydCB7XG4gIHBhcnNlUGxpc3RGaWxlLFxuICBwYXJzZVBsaXN0LFxuICBjcmVhdGVQbGlzdCxcbiAgdXBkYXRlUGxpc3RGaWxlLFxuICBjcmVhdGVCaW5hcnlQbGlzdCxcbiAgcGFyc2VCaW5hcnlQbGlzdCxcbn07XG4iXSwibWFwcGluZ3MiOiI7Ozs7Ozs7Ozs7Ozs7QUFBQSxJQUFBQSxNQUFBLEdBQUFDLHNCQUFBLENBQUFDLE9BQUE7QUFDQSxJQUFBQyxjQUFBLEdBQUFGLHNCQUFBLENBQUFDLE9BQUE7QUFDQSxJQUFBRSxhQUFBLEdBQUFILHNCQUFBLENBQUFDLE9BQUE7QUFDQSxJQUFBRyxHQUFBLEdBQUFKLHNCQUFBLENBQUFDLE9BQUE7QUFDQSxJQUFBSSxPQUFBLEdBQUFMLHNCQUFBLENBQUFDLE9BQUE7QUFDQSxJQUFBSyxPQUFBLEdBQUFOLHNCQUFBLENBQUFDLE9BQUE7QUFFQSxNQUFNTSxpQkFBaUIsR0FBRztFQUN4QkMsTUFBTSxFQUFFQyxNQUFNLENBQUNDLElBQUksQ0FBQyxVQUFVLENBQUM7RUFDL0JDLElBQUksRUFBRTtBQUNSLENBQUM7QUFDRCxNQUFNQyxnQkFBZ0IsR0FBRztFQUN2QkosTUFBTSxFQUFFQyxNQUFN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
+    let textPlist = getXmlPlist(data);
+    if (textPlist) {
+        return plist_1.default.parse(textPlist);
+    }
+    let binaryPlist = getBinaryPlist(data);
+    if (binaryPlist) {
+        return parseBinaryPlist(binaryPlist)[0];
+    }
+    throw new Error(`Unknown type of plist, data: ${data.toString()}`);
+}
+exports.parsePlist = parsePlist;
+//# sourceMappingURL=plist.js.map

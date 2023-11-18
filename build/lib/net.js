@@ -1,229 +1,297 @@
 "use strict";
-
-var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault");
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.downloadFile = downloadFile;
-exports.uploadFile = uploadFile;
-require("source-map-support/register");
-var _lodash = _interopRequireDefault(require("lodash"));
-var _fs = _interopRequireDefault(require("./fs"));
-var _bluebird = _interopRequireDefault(require("bluebird"));
-var _util = require("./util");
-var _logger = _interopRequireDefault(require("./logger"));
-var _jsftp = _interopRequireDefault(require("jsftp"));
-var _timing = _interopRequireDefault(require("./timing"));
-var _axios = _interopRequireDefault(require("axios"));
-var _formData = _interopRequireDefault(require("form-data"));
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.downloadFile = exports.uploadFile = void 0;
+const lodash_1 = __importDefault(require("lodash"));
+const fs_1 = __importDefault(require("./fs"));
+const bluebird_1 = __importDefault(require("bluebird"));
+const util_1 = require("./util");
+const logger_1 = __importDefault(require("./logger"));
+const jsftp_1 = __importDefault(require("jsftp"));
+const timing_1 = __importDefault(require("./timing"));
+const axios_1 = __importDefault(require("axios"));
+const form_data_1 = __importDefault(require("form-data"));
 const DEFAULT_TIMEOUT_MS = 4 * 60 * 1000;
+/**
+ * Type guard for param to {@linkcode toAxiosAuth}
+ * @param {any} value
+ * @returns {value is AuthCredentials | import('axios').AxiosBasicCredentials}
+ */
 function isAxiosAuth(value) {
-  return _lodash.default.isPlainObject(value);
+    return lodash_1.default.isPlainObject(value);
 }
+/**
+ * Converts {@linkcode AuthCredentials} to credentials understood by {@linkcode axios}.
+ * @param {AuthCredentials | import('axios').AxiosBasicCredentials} [auth]
+ * @returns {import('axios').AxiosBasicCredentials?}
+ */
 function toAxiosAuth(auth) {
-  if (!isAxiosAuth(auth)) {
-    return null;
-  }
-  const axiosAuth = {
-    username: 'username' in auth ? auth.username : auth.user,
-    password: 'password' in auth ? auth.password : auth.pass
-  };
-  return axiosAuth.username && axiosAuth.password ? axiosAuth : null;
-}
-async function uploadFileToHttp(localFileStream, parsedUri, uploadOptions = {}) {
-  const {
-    method = 'POST',
-    timeout = DEFAULT_TIMEOUT_MS,
-    headers,
-    auth,
-    fileFieldName = 'file',
-    formFields
-  } = uploadOptions;
-  const {
-    href
-  } = parsedUri;
-  const requestOpts = {
-    url: href,
-    method,
-    timeout,
-    maxContentLength: Infinity,
-    maxBodyLength: Infinity
-  };
-  const axiosAuth = toAxiosAuth(auth);
-  if (axiosAuth) {
-    requestOpts.auth = axiosAuth;
-  }
-  if (fileFieldName) {
-    const form = new _formData.default();
-    if (formFields) {
-      let pairs = [];
-      if (_lodash.default.isArray(formFields)) {
-        pairs = formFields;
-      } else if (_lodash.default.isPlainObject(formFields)) {
-        pairs = _lodash.default.toPairs(formFields);
-      }
-      for (const [key, value] of pairs) {
-        if (_lodash.default.toLower(key) !== _lodash.default.toLower(fileFieldName)) {
-          form.append(key, value);
-        }
-      }
+    if (!isAxiosAuth(auth)) {
+        return null;
     }
-    form.append(fileFieldName, localFileStream);
-    requestOpts.headers = {
-      ...(_lodash.default.isPlainObject(headers) ? headers : {}),
-      ...form.getHeaders()
+    const axiosAuth = {
+        username: 'username' in auth ? auth.username : auth.user,
+        password: 'password' in auth ? auth.password : auth.pass,
     };
-    requestOpts.data = form;
-  } else {
-    if (_lodash.default.isPlainObject(headers)) {
-      requestOpts.headers = headers;
+    return axiosAuth.username && axiosAuth.password ? axiosAuth : null;
+}
+/**
+ * @param {NodeJS.ReadableStream} localFileStream
+ * @param {URL} parsedUri
+ * @param {HttpUploadOptions & NetOptions} [uploadOptions]
+ */
+async function uploadFileToHttp(localFileStream, parsedUri, uploadOptions = /** @type {HttpUploadOptions & NetOptions} */ ({})) {
+    const { method = 'POST', timeout = DEFAULT_TIMEOUT_MS, headers, auth, fileFieldName = 'file', formFields, } = uploadOptions;
+    const { href } = parsedUri;
+    /** @type {import('axios').AxiosRequestConfig} */
+    const requestOpts = {
+        url: href,
+        method,
+        timeout,
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+    };
+    const axiosAuth = toAxiosAuth(auth);
+    if (axiosAuth) {
+        requestOpts.auth = axiosAuth;
     }
-    requestOpts.data = localFileStream;
-  }
-  _logger.default.debug(`Performing ${method} to ${href} with options (excluding data): ` + JSON.stringify(_lodash.default.omit(requestOpts, ['data'])));
-  const {
-    status,
-    statusText
-  } = await (0, _axios.default)(requestOpts);
-  _logger.default.info(`Server response: ${status} ${statusText}`);
+    if (fileFieldName) {
+        const form = new form_data_1.default();
+        if (formFields) {
+            let pairs = [];
+            if (lodash_1.default.isArray(formFields)) {
+                pairs = formFields;
+            }
+            else if (lodash_1.default.isPlainObject(formFields)) {
+                pairs = lodash_1.default.toPairs(formFields);
+            }
+            for (const [key, value] of pairs) {
+                if (lodash_1.default.toLower(key) !== lodash_1.default.toLower(fileFieldName)) {
+                    form.append(key, value);
+                }
+            }
+        }
+        form.append(fileFieldName, localFileStream); // AWS S3 POST upload requires this to be the last field
+        requestOpts.headers = {
+            ...(lodash_1.default.isPlainObject(headers) ? headers : {}),
+            ...form.getHeaders(),
+        };
+        requestOpts.data = form;
+    }
+    else {
+        if (lodash_1.default.isPlainObject(headers)) {
+            // @ts-ignore
+            requestOpts.headers = headers;
+        }
+        requestOpts.data = localFileStream;
+    }
+    logger_1.default.debug(`Performing ${method} to ${href} with options (excluding data): ` +
+        JSON.stringify(lodash_1.default.omit(requestOpts, ['data'])));
+    const { status, statusText } = await (0, axios_1.default)(requestOpts);
+    logger_1.default.info(`Server response: ${status} ${statusText}`);
 }
-async function uploadFileToFtp(localFileStream, parsedUri, uploadOptions = {}) {
-  const {
-    auth
-  } = uploadOptions;
-  const {
-    hostname,
-    port,
-    protocol,
-    pathname
-  } = parsedUri;
-  const ftpOpts = {
-    host: hostname,
-    port: !_lodash.default.isUndefined(port) ? _lodash.default.parseInt(port) : 21
-  };
-  if (auth !== null && auth !== void 0 && auth.user && auth !== null && auth !== void 0 && auth.pass) {
-    ftpOpts.user = auth.user;
-    ftpOpts.pass = auth.pass;
-  }
-  _logger.default.debug(`${protocol} upload options: ${JSON.stringify(ftpOpts)}`);
-  return await new _bluebird.default((resolve, reject) => {
-    new _jsftp.default(ftpOpts).put(localFileStream, pathname, err => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve();
-      }
+/**
+ * @param {string | Buffer | NodeJS.ReadableStream} localFileStream
+ * @param {URL} parsedUri
+ * @param {NotHttpUploadOptions & NetOptions} [uploadOptions]
+ */
+async function uploadFileToFtp(localFileStream, parsedUri, uploadOptions = /** @type {NotHttpUploadOptions & NetOptions} */ ({})) {
+    const { auth } = uploadOptions;
+    const { hostname, port, protocol, pathname } = parsedUri;
+    const ftpOpts = {
+        host: hostname,
+        port: !lodash_1.default.isUndefined(port) ? lodash_1.default.parseInt(port) : 21,
+    };
+    if (auth?.user && auth?.pass) {
+        ftpOpts.user = auth.user;
+        ftpOpts.pass = auth.pass;
+    }
+    logger_1.default.debug(`${protocol} upload options: ${JSON.stringify(ftpOpts)}`);
+    return await new bluebird_1.default((resolve, reject) => {
+        new jsftp_1.default(ftpOpts).put(localFileStream, pathname, (err) => {
+            if (err) {
+                reject(err);
+            }
+            else {
+                resolve();
+            }
+        });
     });
-  });
 }
+/**
+ * Returns `true` if params are valid for {@linkcode uploadFileToHttp}.
+ * @param {any} opts
+ * @param {URL} url
+ * @returns {opts is HttpUploadOptions & NetOptions}
+ */
 function isHttpUploadOptions(opts, url) {
-  try {
-    const {
-      protocol
-    } = url;
-    return protocol === 'http:' || protocol === 'https:';
-  } catch {
-    return false;
-  }
+    try {
+        const { protocol } = url;
+        return protocol === 'http:' || protocol === 'https:';
+    }
+    catch {
+        return false;
+    }
 }
+/**
+ * Returns `true` if params are valid for {@linkcode uploadFileToFtp}.
+ * @param {any} opts
+ * @param {URL} url
+ * @returns {opts is NotHttpUploadOptions & NetOptions}
+ */
 function isNotHttpUploadOptions(opts, url) {
-  try {
-    const {
-      protocol
-    } = url;
-    return protocol === 'ftp:';
-  } catch {
-    return false;
-  }
-}
-async function uploadFile(localPath, remoteUri, uploadOptions = {}) {
-  if (!(await _fs.default.exists(localPath))) {
-    throw new Error(`'${localPath}' does not exists or is not accessible`);
-  }
-  const {
-    isMetered = true
-  } = uploadOptions;
-  const url = new URL(remoteUri);
-  const {
-    size
-  } = await _fs.default.stat(localPath);
-  if (isMetered) {
-    _logger.default.info(`Uploading '${localPath}' of ${(0, _util.toReadableSizeString)(size)} size to '${remoteUri}'`);
-  }
-  const timer = new _timing.default().start();
-  if (isHttpUploadOptions(uploadOptions, url)) {
-    if (!uploadOptions.fileFieldName) {
-      uploadOptions.headers = {
-        ...(_lodash.default.isPlainObject(uploadOptions.headers) ? uploadOptions.headers : {}),
-        'Content-Length': size
-      };
+    try {
+        const { protocol } = url;
+        return protocol === 'ftp:';
     }
-    await uploadFileToHttp(_fs.default.createReadStream(localPath), url, uploadOptions);
-  } else if (isNotHttpUploadOptions(uploadOptions, url)) {
-    await uploadFileToFtp(_fs.default.createReadStream(localPath), url, uploadOptions);
-  } else {
-    throw new Error(`Cannot upload the file at '${localPath}' to '${remoteUri}'. ` + `Unsupported remote protocol '${url.protocol}'. ` + `Only http/https and ftp/ftps protocols are supported.`);
-  }
-  if (isMetered) {
-    _logger.default.info(`Uploaded '${localPath}' of ${(0, _util.toReadableSizeString)(size)} size in ` + `${timer.getDuration().asSeconds.toFixed(3)}s`);
-  }
-}
-async function downloadFile(remoteUrl, dstPath, downloadOptions = {}) {
-  const {
-    isMetered = true,
-    auth,
-    timeout = DEFAULT_TIMEOUT_MS,
-    headers
-  } = downloadOptions;
-  const requestOpts = {
-    url: remoteUrl,
-    responseType: 'stream',
-    timeout
-  };
-  const axiosAuth = toAxiosAuth(auth);
-  if (axiosAuth) {
-    requestOpts.auth = axiosAuth;
-  }
-  if (_lodash.default.isPlainObject(headers)) {
-    requestOpts.headers = headers;
-  }
-  const timer = new _timing.default().start();
-  let responseLength;
-  try {
-    const writer = _fs.default.createWriteStream(dstPath);
-    const {
-      data: responseStream,
-      headers: responseHeaders
-    } = await (0, _axios.default)(requestOpts);
-    responseLength = parseInt(responseHeaders['content-length'] || '0', 10);
-    responseStream.pipe(writer);
-    await new _bluebird.default((resolve, reject) => {
-      responseStream.once('error', reject);
-      writer.once('finish', resolve);
-      writer.once('error', e => {
-        responseStream.unpipe(writer);
-        reject(e);
-      });
-    });
-  } catch (err) {
-    throw new Error(`Cannot download the file from ${remoteUrl}: ${err.message}`);
-  }
-  const {
-    size
-  } = await _fs.default.stat(dstPath);
-  if (responseLength && size !== responseLength) {
-    await _fs.default.rimraf(dstPath);
-    throw new Error(`The size of the file downloaded from ${remoteUrl} (${size} bytes) ` + `differs from the one in Content-Length response header (${responseLength} bytes)`);
-  }
-  if (isMetered) {
-    const secondsElapsed = timer.getDuration().asSeconds;
-    _logger.default.debug(`${remoteUrl} (${(0, _util.toReadableSizeString)(size)}) ` + `has been downloaded to '${dstPath}' in ${secondsElapsed.toFixed(3)}s`);
-    if (secondsElapsed >= 2) {
-      const bytesPerSec = Math.floor(size / secondsElapsed);
-      _logger.default.debug(`Approximate download speed: ${(0, _util.toReadableSizeString)(bytesPerSec)}/s`);
+    catch {
+        return false;
     }
-  }
-}require('source-map-support').install();
-
-
-//# sourceMappingURL=data:application/json;charset=utf8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoibGliL25ldC5qcyIsIm5hbWVzIjpbIl9sb2Rhc2giLCJfaW50ZXJvcFJlcXVpcmVEZWZhdWx0IiwicmVxdWlyZSIsIl9mcyIsIl9ibHVlYmlyZCIsIl91dGlsIiwiX2xvZ2dlciIsIl9qc2Z0cCIsIl90aW1pbmciLCJfYXhpb3MiLCJfZm9ybURhdGEiLCJERUZBVUxUX1RJTUVPVVRfTVMiLCJpc0F4aW9zQXV0aCIsInZhbHVlIiwiXyIsImlzUGxhaW5PYmplY3QiLCJ0b0F4aW9zQXV0aCIsImF1dGgiLCJheGlvc0F1dGgiLCJ1c2VybmFtZSIsInVzZXIiLCJwYXNzd29yZCIsInBhc3MiLCJ1cGxvYWRGaWxlVG9IdHRwIiwibG9jYWxGaWxlU3RyZWFtIiwicGFyc2VkVXJpIiwidXBsb2FkT3B0aW9ucyIsIm1ldGhvZCIsInRpbWVvdXQiLCJoZWFkZXJzIiwiZmlsZUZpZWxkTmFtZSIsImZvcm1GaWVsZHMiLCJocmVmIiwicmVxdWVzdE9wdHMiLCJ1cmwiLCJtYXhDb250ZW50TGVuZ3RoIiwiSW5maW5pdHkiLCJtYXhCb2R5TGVuZ3RoIiwiZm9ybSIsIkZvcm1EYXRhIiwicGFpcnMiLCJpc0FycmF5IiwidG9QYWlycyIsImtleSIsInRvTG93ZXIiLCJhcHBlbmQiLCJnZXRIZWFkZXJzIiwiZGF0YSIsImxvZyIsImRlYnVnIiwiSlNPTiIsInN0cmluZ2lmeSIsIm9taXQiLCJzdGF0dXMiLCJzdGF0dXNUZXh0IiwiYXhpb3MiLCJpbmZvIiwidXBsb2FkRmlsZVRvRnRwIiwiaG9zdG5hbWUiLCJwb3J0IiwicHJvdG9jb2wiLCJwYXRobmFtZSIsImZ0cE9wdHMiLCJob3N0IiwiaXNVbmRlZmluZWQiLCJwYXJzZUludCIsIkIiLCJyZXNvbHZlIiwicmVqZWN0IiwiRnRwIiwicHV0IiwiZXJyIiwiaXNIdHRwVXBsb2FkT3B0aW9ucyIsIm9wdHMiLCJpc05vdEh0dHBVcGxvYWRPcHRpb25zIiwidXBsb2FkRmlsZSIsImxvY2FsUGF0aCIsInJlbW90ZVVyaSIsImZzIiwiZXhpc3RzIiwiRXJyb3IiLCJpc01ldGVyZWQiLCJVUkwiLCJzaXplIiwic3RhdCIsInRvUmVhZGFibGVTaXplU3RyaW5nIiwidGltZXIiLCJUaW1lciIsInN0YXJ0IiwiY3JlYXRlUmVhZFN0cmVhbSIsImdldER1cmF0aW9uIiwiYXNTZWNvbmRzIiwidG9GaXhlZCIsImRvd25sb2FkRmlsZSIsInJlbW90ZVVybCIsImRzdFBhdGgiLCJkb3dubG9hZE9wdGlvbnMiLCJyZXNwb25zZVR5cGUiLCJyZXNwb25zZUxlbmd0aCIsIndyaXRlciIsImNyZWF0ZVdyaXRlU3RyZWFtIiwicmVzcG9uc2VTdHJlYW0iLCJyZXNwb25zZUhlYWRlcnMiLCJwaXBlIiwib25jZSIsImUiLCJ1bnBpcGUiLCJtZXNzYWdlIiwicmltcmFmIiwic2Vjb25kc0VsYXBzZWQiLCJieXRlc1BlclNlYyIsIk1hdGgiLCJmbG9vciJdLCJzb3VyY2VSb290IjoiLi4vLi4iLCJzb3VyY2VzIjpbImxpYi9uZXQuanMiXSwic291cmNlc0NvbnRlbnQiOlsiaW1wb3J0IF8gZnJvbSAnbG9kYXNoJztcbmltcG9ydCBmcyBmcm9tICcuL2ZzJztcbmltcG9ydCBCIGZyb20gJ2JsdWViaXJkJztcbmltcG9ydCB7dG9SZWFkYWJsZVNpemVTdHJpbmd9IGZyb20gJy4vdXRpbCc7XG5pbXBvcnQgbG9nIGZyb20gJy4vbG9nZ2VyJztcbmltcG9ydCBGdHAgZnJvbSAnanNmdHAnO1xuaW1wb3J0IFRpbWVyIGZyb20gJy4vdGltaW5nJztcbmltcG9ydCBheGlvcyBmcm9tICdheGlvcyc7XG5pbXBvcnQgRm9ybURhdGEgZnJvbSAnZm9ybS1kYXRhJztcblxuY29uc3QgREVGQVVMVF9USU1FT1VUX01TID0gNCAqIDYwICogMTAwMDtcblxuLyoqXG4gKiBUeXBlIGd1YXJkIGZvciBwYXJhbSB0byB7QGxpbmtjb2RlIHRvQXhpb3NBdXRofVxuICogQHBhcmFtIHthbnl9IHZhbHVlXG4gKiBAcmV0dXJucyB7dmFsdWUgaXMgQXV0aENyZWRlbnRpYWxzIHwgaW1wb3J0KCdheGlvcycpLkF4aW9zQmFzaWNDcmVkZW50aWFsc31cbiAqL1xuZnVuY3Rpb24gaXNBeGlvc0F1dGggKHZhbHVlKSB7XG4gIHJldHVybiBfLmlzUGxhaW5PYmplY3QodmFsdWUpO1xufVxuXG4vKipcbiAqIENvbnZlcnRzIHtAbGlua2NvZGUgQXV0aENyZWRlbnRpYWxzfSB0byBjcmVkZW50aWFscyB1bmRlcnN0b29kIGJ5IHtAbGlua2NvZGUgYXhpb3N9LlxuICogQHBhcmFtIHtBdXRoQ3JlZGVudGlhbHMgfCBpbXBvcnQoJ2F4aW9zJykuQXhpb3NCYXNpY0NyZWRlbnRpYWxzfSBbYXV0aF1cbiAqIEByZXR1cm5zIHtpbXBvcnQoJ2F4aW9zJykuQXhpb3NCYXNpY0NyZWRlbnRpYWxzP31cbiAqL1xuZnVuY3Rpb24gdG9BeGlvc0F1dGggKGF1dGgpIHtcbiAgaWYgKCFpc0F4aW9zQXV0aChhdXRoKSkge1xuICAgIHJldHVybiBudWxsO1xuICB9XG5cbiAgY29uc3QgYXhpb3NBdXRoID0ge1xuICAgIHVzZXJuYW1lOiAndXNlcm5hbWUnIGluIGF1dGggPyBhdXRoLnVzZXJuYW1lIDogYXV0aC51c2VyLFxuICAgIHBhc3N3b3JkOiAncGFzc3dvcmQnIGluIGF1dGggPyBhdXRoLnBhc3N3b3JkIDogYXV0aC5wYXNzLFxuICB9O1xuICByZXR1cm4gYXhpb3NBdXRoLnVzZXJuYW1lICYmIGF4aW9zQXV0aC5wYXNzd29yZCA/IGF4aW9zQXV0aCA6IG51bGw7XG59XG5cbi8qKlxuICogQHBhcmFtIHtOb2RlSlMuUmVhZGFibGVTdHJlYW19IGxvY2FsRmlsZVN0cmVhbVxuICogQHBhcmFtIHtVUkx9IHBhcnNlZFVyaVxuICogQHBhcmFtIHtIdHRwVXBsb2FkT3B0aW9ucyAmIE5ldE9wdGlvbnN9IFt1cGxvYWRPcHRpb25zXVxuICovXG5hc3luYyBmdW5jdGlvbiB1cGxvYWRGaWxlVG9IdHRwIChcbiAgbG9jYWxGaWxlU3RyZWFtLFxuICBwYXJzZWRVcmksXG4gIHVwbG9hZE9wdGlvbnMgPSAvKiogQHR5cGUge0h0dHBVcGxvYWRPcHRpb25zICYgTmV0T3B0aW9uc30gKi8gKHt9KVxuKSB7XG4gIGNvbnN0IHtcbiAgICBtZXRob2QgPSAnUE9TVCcsXG4gICAgdGltZW91dCA9IERFRkFVTFRfVElNRU9VVF9NUyxcbiAgICBoZWFkZXJzLFxuICAgIGF1dGgsXG4gICAgZmlsZUZpZWxkTmFtZSA9ICdmaWxlJyxcbiAgICBmb3JtRmllbGRzLFxuICB9ID0gdXBsb2FkT3B0aW9ucztcbiAgY29uc3Qge2hyZWZ9ID0gcGFyc2VkVXJpO1xuXG4gIC8qKiBAdHlwZSB7aW1wb3J0KCdheGlvcycpLkF4aW9zUmVxdWVzdENvbmZpZ30gKi9cbiAgY29uc3QgcmVxdWVzdE9wdHMgPSB7XG4gICAgdXJsOiBocmVmLFxuICAgIG1ldGhvZCxcbiAgICB0aW1lb3V0LFxuICAgIG1heENvbnRlbnRMZW5ndGg6IEluZmluaXR5LFxuICAgIG1heEJvZHlMZW5ndGg6IEluZmluaXR5LFxuICB9O1xuICBjb25zdCBheGlvc0F1dGggPSB0b0F4aW9zQXV0aChhdXRoKTtcbiAgaWYgKGF4aW9zQXV0aCkge1xuICAgIHJlcXVlc3RPcHRzLmF1dGggPSBheGlvc0F1dGg7XG4gIH1cbiAgaWYgKGZpbGVGaWVsZE5hbWUpIHtcbiAgICBjb25zdCBmb3JtID0gbmV3IEZvcm1EYXRhKCk7XG4gICAgaWYgKGZvcm1GaWVsZHMpIHtcbiAgICAgIGxldCBwYWlycyA9IFtdO1xuICAgICAgaWYgKF8uaXNBcnJheShmb3JtRmllbGRzKSkge1xuICAgICAgICBwYWlycyA9IGZvcm1GaWVsZHM7XG4gICAgICB9IGVsc2UgaWYgKF8uaXNQbGFpbk9iamVjdChmb3JtRmllbGRzKSkge1xuICAgICAgICBwYWlycyA9IF8udG9QYWlycyhmb3JtRmllbGRzKTtcbiAgICAgIH1cbiAgICAgIGZvciAoY29uc3QgW2tleSwgdmFsdWVdIG9mIHBhaXJzKSB7XG4gICAgICAgIGlmIChfLnRvTG93ZXIoa2V5KSAhPT0gXy50b0xvd2VyKGZpbGVGaWVsZE5hbWUpKSB7XG4gICAgICAgICAgZm9ybS5hcHBlbmQoa2V5LCB2YWx1ZSk7XG4gICAgICAgIH1cbiAgICAgIH1cbiAgICB9XG4gICAgZm9ybS5hcHBlbmQoZmlsZUZpZWxkTmFtZSwgbG9jYWxGaWxlU3RyZWFtKTsgLy8gQVdTIFMzIFBPU1QgdXBsb2FkIHJlcXVpcmVzIHRoaXMgdG8gYmUgdGhlIGxhc3QgZmllbGRcbiAgICByZXF1ZXN0T3B0cy5oZWFkZXJzID0ge1xuICAgICAgLi4uKF8uaXNQbGFpbk9iamVjdChoZWFkZXJzKSA/IGhlYWRlcnMgOiB7fSksXG4gICAgICAuLi5mb3JtLmdldEhlYWRlcnMoKSxcbiAgICB9O1xuICAgIHJlcXVlc3RPcHRzLmRhdGEgPSBmb3JtO1xuICB9IGVsc2Uge1xuICAgIGlmIChfLmlzUGxhaW5PYmplY3QoaGVhZGVycykpIHtcbiAgICAgIC8vIEB0cy1pZ25vcmVcbiAgICAgIHJlcXVlc3RPcHRzLmhlYWRlcnMgPSBoZWFkZXJzO1xuICAgIH1cbiAgICByZXF1ZXN0T3B0cy5kYXRhID0gbG9jYWxGaWxlU3RyZWFtO1xuICB9XG4gIGxvZy5kZWJ1ZyhcbiAgICBgUGVyZm9ybWluZyAke21ldGhvZH0gdG8gJHtocmVmfSB3aXRoIG9wdGlvbnMgKGV4Y2x1ZGluZyBkYXRhKTogYCArXG4gICAgICBKU09OLnN0cmluZ2lmeShfLm9taXQocmVxdWVzdE9wdHMsIFsnZGF0YSddKSlcbiAgKTtcblxuICBjb25zdCB7c3RhdHVzLCBzdGF0dXNUZXh0fSA9IGF3YWl0IGF4aW9zKHJlcXVlc3RPcHRzKTtcbiAgbG9nLmluZm8oYFNlcnZlciByZXNwb25zZTogJHtzdGF0dXN9ICR7c3RhdHVzVGV4dH1gKTtcbn1cblxuLyoqXG4gKiBAcGFyYW0ge3N0cmluZyB8IEJ1ZmZlciB8IE5vZGVKUy5SZWFkYWJsZVN0cmVhbX0gbG9jYWxGaWxlU3RyZWFtXG4gKiBAcGFyYW0ge1VSTH0gcGFyc2VkVXJpXG4gKiBAcGFyYW0ge05vdEh0dHBVcGxvYWRPcHRpb25zICYgTmV0T3B0aW9uc30gW3VwbG9hZE9wdGlvbnNdXG4gKi9cbmFzeW5jIGZ1bmN0aW9uIHVwbG9hZEZpbGVUb0Z0cCAoXG4gIGxvY2FsRmlsZVN0cmVhbSxcbiAgcGFyc2VkVXJpLFxuICB1cGxvYWRPcHRpb25zID0gLyoqIEB0eXBlIHtOb3RIdHRwVXBsb2FkT3B0aW9ucyAmIE5ldE9wdGlvbnN9ICovICh7fSlcbikge1xuICBjb25zdCB7YXV0aH0gPSB1cGxvYWRPcHRpb25zO1xuICBjb25zdCB7aG9zdG5hbWUsIHBvcnQsIHByb3RvY29sLCBwYXRobmFtZX0gPSBwYXJzZWRVcmk7XG5cbiAgY29uc3QgZnRwT3B0cyA9IHtcbiAgICBob3N0OiBob3N0bmFtZSxcbiAgICBwb3J0OiAhXy5pc1VuZGVmaW5lZChwb3J0KSA/IF8ucGFyc2VJbnQocG9ydCkgOiAyMSxcbiAgfTtcbiAgaWYgKGF1dGg/LnVzZXIgJiYgYXV0aD8ucGFzcykge1xuICAgIGZ0cE9wdHMudXNlciA9IGF1dGgudXNlcjtcbiAgICBmdHBPcHRzLnBhc3MgPSBhdXRoLnBhc3M7XG4gIH1cbiAgbG9nLmRlYnVnKGAke3Byb3RvY29sfSB1cGxvYWQgb3B0aW9uczogJHtKU09OLnN0cmluZ2lmeShmdHBPcHRzKX1gKTtcbiAgcmV0dXJuIGF3YWl0IG5ldyBCKChyZXNvbHZlLCByZWplY3QpID0+IHtcbiAgICBuZXcgRnRwKGZ0cE9wdHMpLnB1dChsb2NhbEZpbGVTdHJlYW0sIHBhdGhuYW1lLCAoZXJyKSA9PiB7XG4gICAgICBpZiAoZXJyKSB7XG4gICAgICAgIHJlamVjdChlcnIpO1xuICAgICAgfSBlbHNlIHtcbiAgICAgICAgcmVzb2x2ZSgpO1xuICAgICAgfVxuICAgIH0pO1xuICB9KTtcbn1cblxuLyoqXG4gKiBSZXR1cm5zIGB0cnVlYCBpZiBwYXJhbXMgYXJlIHZhbGlkIGZvciB7QGxpbmtjb2RlIHVwbG9hZEZpbGVUb0h0dHB9LlxuICogQHBhcmFtIHthbnl9IG9wdHNcbiAqIEBwYXJhbSB7VVJMfSB1cmxcbiAqIEByZXR1cm5zIHtvcHRzIGlzIEh0dHBVcGxvYWRPcHRpb25zICYgTmV0T3B0aW9uc31cbiAqL1xuZnVuY3Rpb24gaXNIdHRwVXBsb2FkT3B0aW9ucyAob3B0cywgdXJsKSB7XG4gIHRyeSB7XG4gICAgY29uc3Qge3Byb3RvY29sfSA9IHVybDtcbiAgICByZXR1cm4gcHJvdG9jb2wgPT09ICdodHRwOicgfHwgcHJvdG9jb2wgPT09ICdodHRwczonO1xuICB9IGNhdGNoIHtcbiAgICByZXR1cm4gZmFsc2U7XG4gIH1cbn1cblxuLyoqXG4gKiBSZXR1cm5zIGB0cnVlYCBpZiBwYXJhbXMgYXJlIHZhbGlkIGZvciB7QGxpbmtjb2RlIHVwbG9hZEZpbGVUb0Z0cH0uXG4gKiBAcGFyYW0ge2FueX0gb3B0c1xuICogQHBhcmFtIHtVUkx9IHVybFxuICogQHJldHVybnMge29wdHMgaXMgTm90SHR0cFVwbG9hZE9wdGlvbnMgJiBOZXRPcHRpb25zfVxuICovXG5mdW5jdGlvbiBpc05vdEh0dHBVcGxvYWRPcHRpb25zIChvcHRzLCB1cmwpIHtcbiAgdHJ5IHtcbiAgICBjb25zdCB7cHJvdG9jb2x9ID0gdXJsO1xuICAgIHJldHVybiBwcm90b2NvbCA9PT0gJ2Z0cDonO1xuICB9IGNhdGNoIHtcbiAgICByZXR1cm4gZmFsc2U7XG4gIH1cbn1cbi8qKlxuICogVXBsb2FkcyB0aGUgZ2l2ZW4gZmlsZSB0byBhIHJlbW90ZSBsb2NhdGlvbi4gSFRUUChTKSBhbmQgRlRQXG4gKiBwcm90b2NvbHMgYXJlIHN1cHBvcnRlZC5cbiAqXG4gKiBAcGFyYW0ge3N0cmluZ30gbG9jYWxQYXRoIC0gVGhlIHBhdGggdG8gYSBmaWxlIG9uIHRoZSBsb2NhbCBzdG9yYWdlLlxuICogQHBhcmFtIHtzdHJpbmd9IHJlbW90ZVVyaSAtIFRoZSByZW1vdGUgVVJJIHRvIHVwbG9hZCB0aGUgZmlsZSB0by5cbiAqIEBwYXJhbSB7KEh0dHBVcGxvYWRPcHRpb25zfE5vdEh0dHBVcGxvYWRPcHRpb25zKSAmIE5ldE9wdGlvbnN9IFt1cGxvYWRPcHRpb25zXVxuICogQHJldHVybnMge1Byb21pc2U8dm9pZD59XG4gKi9cbmFzeW5jIGZ1bmN0aW9uIHVwbG9hZEZpbGUgKFxuICBsb2NhbFBhdGgsXG4gIHJlbW90ZVVyaSxcbiAgdXBsb2FkT3B0aW9ucyA9IC8qKiBAdHlwZSB7KEh0dHBVcGxvYWRPcHRpb25zfE5vdEh0dHBVcGxvYWRPcHRpb25zKSAmIE5ldE9wdGlvbnN9ICovICh7fSlcbikge1xuICBpZiAoIShhd2FpdCBmcy5leGlzdHMobG9jYWxQYXRoKSkpIHtcbiAgICB0aHJvdyBuZXcgRXJyb3IoYCcke2xvY2FsUGF0aH0nIGRvZXMgbm90IGV4aXN0cyBvciBpcyBub3QgYWNjZXNzaWJsZWApO1xuICB9XG5cbiAgY29uc3Qge2lzTWV0ZXJlZCA9IHRydWV9ID0gdXBsb2FkT3B0aW9ucztcbiAgY29uc3QgdXJsID0gbmV3IFVSTChyZW1vdGVVcmkpO1xuICBjb25zdCB7c2l6ZX0gPSBhd2FpdCBmcy5zdGF0KGxvY2FsUGF0aCk7XG4gIGlmIChpc01ldGVyZWQpIHtcbiAgICBsb2cuaW5mbyhgVXBsb2FkaW5nICcke2xvY2FsUGF0aH0nIG9mICR7dG9SZWFkYWJsZVNpemVTdHJpbmcoc2l6ZSl9IHNpemUgdG8gJyR7cmVtb3RlVXJpfSdgKTtcbiAgfVxuICBjb25zdCB0aW1lciA9IG5ldyBUaW1lcigpLnN0YXJ0KCk7XG4gIGlmIChpc0h0dHBVcGxvYWRPcHRpb25zKHVwbG9hZE9wdGlvbnMsIHVybCkpIHtcbiAgICBpZiAoIXVwbG9hZE9wdGlvbnMuZmlsZUZpZWxkTmFtZSkge1xuICAgICAgdXBsb2FkT3B0aW9ucy5oZWFkZXJzID0ge1xuICAgICAgICAuLi4oXy5pc1BsYWluT2JqZWN0KHVwbG9hZE9wdGlvbnMuaGVhZGVycykgPyB1cGxvYWRPcHRpb25zLmhlYWRlcnMgOiB7fSksXG4gICAgICAgICdDb250ZW50LUxlbmd0aCc6IHNpemUsXG4gICAgICB9O1xuICAgIH1cbiAgICBhd2FpdCB1cGxvYWRGaWxlVG9IdHRwKGZzLmNyZWF0ZVJlYWRTdHJlYW0obG9jYWxQYXRoKSwgdXJsLCB1cGxvYWRPcHRpb25zKTtcbiAgfSBlbHNlIGlmIChpc05vdEh0dHBVcGxvYWRPcHRpb25zKHVwbG9hZE9wdGlvbnMsIHVybCkpIHtcbiAgICBhd2FpdCB1cGxvYWRGaWxlVG9GdHAoZnMuY3JlYXRlUmVhZFN0cmVhbShsb2NhbFBhdGgpLCB1cmwsIHVwbG9hZE9wdGlvbnMpO1xuICB9IGVsc2Uge1xuICAgIHRocm93IG5ldyBFcnJvcihcbiAgICAgIGBDYW5ub3QgdXBsb2FkIHRoZSBmaWxlIGF0ICcke2xvY2FsUGF0aH0nIHRvICcke3JlbW90ZVVyaX0nLiBgICtcbiAgICAgICAgYFVuc3VwcG9ydGVkIHJlbW90ZSBwcm90b2NvbCAnJHt1cmwucHJvdG9jb2x9Jy4gYCArXG4gICAgICAgIGBPbmx5IGh0dHAvaHR0cHMgYW5kIGZ0cC9mdHBzIHByb3RvY29scyBhcmUgc3VwcG9ydGVkLmBcbiAgICApO1xuICB9XG4gIGlmIChpc01ldGVyZWQpIHtcbiAgICBsb2cuaW5mbyhcbiAgICAgIGBVcGxvYWRlZCAnJHtsb2NhbFBhdGh9JyBvZiAke3RvUmVhZGFibGVTaXplU3RyaW5nKHNpemUpfSBzaXplIGluIGAgK1xuICAgICAgICBgJHt0aW1lci5nZXREdXJhdGlvbigpLmFzU2Vjb25kcy50b0ZpeGVkKDMpfXNgXG4gICAgKTtcbiAgfVxufVxuXG4vKipcbiAqIERvd25sb2FkcyB0aGUgZ2l2ZW4gZmlsZSB2aWEgSFRUUChTKVxuICpcbiAqIEBwYXJhbSB7c3RyaW5nfSByZW1vdGVVcmwgLSBUaGUgcmVtb3RlIHVybFxuICogQHBhcmFtIHtzdHJpbmd9IGRzdFBhdGggLSBUaGUgbG9jYWwgcGF0aCB0byBkb3dubG9hZCB0aGUgZmlsZSB0b1xuICogQHBhcmFtIHtEb3dubG9hZE9wdGlvbnMgJiBOZXRPcHRpb25zfSBbZG93bmxvYWRPcHRpb25zXVxuICogQHRocm93cyB7RXJyb3J9IElmIGRvd25sb2FkIG9wZXJhdGlvbiBmYWlsc1xuICovXG5hc3luYyBmdW5jdGlvbiBkb3dubG9hZEZpbGUgKFxuICByZW1vdGVVcmwsXG4gIGRzdFBhdGgsXG4gIGRvd25sb2FkT3B0aW9ucyA9IC8qKiBAdHlwZSB7RG93bmxvYWRPcHRpb25zICYgTmV0T3B0aW9uc30gKi8gKHt9KVxuKSB7XG4gIGNvbnN0IHtpc01ldGVyZWQgPSB0cnVlLCBhdXRoLCB0aW1lb3V0ID0gREVGQVVMVF9USU1FT1VUX01TLCBoZWFkZXJzfSA9IGRvd25sb2FkT3B0aW9ucztcblxuICAvKipcbiAgICogQHR5cGUge2ltcG9ydCgnYXhpb3MnKS5BeGlvc1JlcXVlc3RDb25maWd9XG4gICAqL1xuICBjb25zdCByZXF1ZXN0T3B0cyA9IHtcbiAgICB1cmw6IHJlbW90ZVVybCxcbiAgICByZXNwb25zZVR5cGU6ICdzdHJlYW0nLFxuICAgIHRpbWVvdXQsXG4gIH07XG4gIGNvbnN0IGF4aW9zQXV0aCA9IHRvQXhpb3NBdXRoKGF1dGgpO1xuICBpZiAoYXhpb3NBdXRoKSB7XG4gICAgcmVxdWVzdE9wdHMuYXV0aCA9IGF4aW9zQXV0aDtcbiAgfVxuICBpZiAoXy5pc1BsYWluT2JqZWN0KGhlYWRlcnMpKSB7XG4gICAgcmVxdWVzdE9wdHMuaGVhZGVycyA9IGhlYWRlcnM7XG4gIH1cblxuICBjb25zdCB0aW1lciA9IG5ldyBUaW1lcigpLnN0YXJ0KCk7XG4gIGxldCByZXNwb25zZUxlbmd0aDtcbiAgdHJ5IHtcbiAgICBjb25zdCB3cml0ZXIgPSBmcy5jcmVhdGVXcml0ZVN0cmVhbShkc3RQYXRoKTtcbiAgICBjb25zdCB7ZGF0YTogcmVzcG9uc2VTdHJlYW0sIGhlYWRlcnM6IHJlc3BvbnNlSGVhZGVyc30gPSBhd2FpdCBheGlvcyhyZXF1ZXN0T3B0cyk7XG4gICAgcmVzcG9uc2VMZW5ndGggPSBwYXJzZUludChyZXNwb25zZUhlYWRlcnNbJ2NvbnRlbnQtbGVuZ3RoJ10gfHwgJzAnLCAxMCk7XG4gICAgcmVzcG9uc2VTdHJlYW0ucGlwZSh3cml0ZXIpO1xuXG4gICAgYXdhaXQgbmV3IEIoKHJlc29sdmUsIHJlamVjdCkgPT4ge1xuICAgICAgcmVzcG9uc2VTdHJlYW0ub25jZSgnZXJyb3InLCByZWplY3QpO1xuICAgICAgd3JpdGVyLm9uY2UoJ2ZpbmlzaCcsIHJlc29sdmUpO1xuICAgICAgd3JpdGVyLm9uY2UoJ2Vycm9yJywgKGUpID0+IHtcbiAgICAgICAgcmVzcG9uc2VTdHJlYW0udW5waXBlKHdyaXRlcik7XG4gICAgICAgIHJlamVjdChlKTtcbiAgICAgIH0pO1xuICAgIH0pO1xuICB9IGNhdGNoIChlcnIpIHtcbiAgICB0aHJvdyBuZXcgRXJyb3IoYENhbm5vdCBkb3dubG9hZCB0aGUgZmlsZSBmcm9tICR7cmVtb3RlVXJsfTogJHtlcnIubWVzc2FnZX1gKTtcbiAgfVxuXG4gIGNvbnN0IHtzaXplfSA9IGF3YWl0IGZzLnN0YXQoZHN0UGF0aCk7XG4gIGlmIChyZXNwb25zZUxlbmd0aCAmJiBzaXplICE9PSByZXNwb25zZUxlbmd0aCkge1xuICAgIGF3YWl0IGZzLnJpbXJhZihkc3RQYXRoKTtcbiAgICB0aHJvdyBuZXcgRXJyb3IoXG4gICAgICBgVGhlIHNpemUgb2YgdGhlIGZpbGUgZG93bmxvYWRlZCBmcm9tICR7cmVtb3RlVXJsfSAoJHtzaXplfSBieXRlcykgYCArXG4gICAgICAgIGBkaWZmZXJzIGZyb20gdGhlIG9uZSBpbiBDb250ZW50LUxlbmd0aCByZXNwb25zZSBoZWFkZXIgKCR7cmVzcG9uc2VMZW5ndGh9IGJ5dGVzKWBcbiAgICApO1xuICB9XG4gIGlmIChpc01ldGVyZWQpIHtcbiAgICBjb25zdCBzZWNvbmRzRWxhcHNlZCA9IHRpbWVyLmdldER1cmF0aW9uKCkuYXNTZWNvbmRzO1xuICAgIGxvZy5kZWJ1ZyhcbiAgICAgIGAke3JlbW90ZVVybH0gKCR7dG9SZWFkYWJsZVNpemVTdHJpbmcoc2l6ZSl9KSBgICtcbiAgICAgICAgYGhhcyBiZWVuIGRvd25sb2FkZWQgdG8gJyR7ZHN0UGF0aH0nIGluICR7c2Vjb25kc0VsYXBzZWQudG9GaXhlZCgzKX1zYFxuICAgICk7XG4gICAgaWYgKHNlY29uZHNFbGFwc2VkID49IDIpIHtcbiAgICAgIGNvbnN0IGJ5dGVzUGVyU2VjID0gTWF0aC5mbG9vcihzaXplIC8gc2Vjb25kc0VsYXBzZWQpO1xuICAgICAgbG9nLmRlYnVnKGBBcHByb3hpbWF0ZSBkb3dubG9hZCBzcGVlZDogJHt0b1JlYWRhYmxlU2l6ZVN0cmluZyhieXRlc1BlclNlYyl9L3NgKTtcbiAgICB9XG4gIH1cbn1cblxuZXhwb3J0IHt1cGxvYWRGaWxlLCBkb3dubG9hZEZpbGV9O1xuXG4vKipcbiAqIENvbW1vbiBvcHRpb25zIGZvciB7QGxpbmtjb2RlIHVwbG9hZEZpbGV9IGFuZCB7QGxpbmtjb2RlIGRvd25sb2FkRmlsZX0uXG4gKiBAdHlwZWRlZiBOZXRPcHRpb25zXG4gKiBAcHJvcGVydHkge2Jvb2xlYW59IFtpc01ldGVyZWQ9dHJ1ZV0gLSBXaGV0aGVyIHRvIGxvZyB0aGUgYWN0dWFsIGRvd25sb2FkIHBlcmZvcm1hbmNlXG4gKiAoZS5nLiB0aW1pbmdzIGFuZCBzcGVlZClcbiAqIEBwcm9wZXJ0eSB7QXV0aENyZWRlbnRpYWxzfSBbYXV0aF0gLSBBdXRoZW50aWNhdGlvbiBjcmVkZW50aWFsc1xuICovXG5cbi8qKlxuICogU3BlY2lmaWMgb3B0aW9ucyBmb3Ige0BsaW5rY29kZSBkb3dubG9hZEZpbGV9LlxuICogQHR5cGVkZWYgRG93bmxvYWRPcHRpb25zXG4gKiBAcHJvcGVydHkge251bWJlcn0gW3RpbWVvdXRdIC0gVGhlIGFjdHVhbCByZXF1ZXN0IHRpbWVvdXQgaW4gbWlsbGlzZWNvbmRzOyBkZWZhdWx0cyB0byB7QGxpbmtjb2RlIERFRkFVTFRfVElNRU9VVF9NU31cbiAqIEBwcm9wZXJ0eSB7UmVjb3JkPHN0cmluZyxhbnk+fSBbaGVhZGVyc10gLSBSZXF1ZXN0IGhlYWRlcnMgbWFwcGluZ1xuICovXG5cbi8qKlxuICogQmFzaWMgYXV0aCBjcmVkZW50aWFsczsgdXNlZCBieSB7QGxpbmtjb2RlIE5ldE9wdGlvbnN9LlxuICogQHR5cGVkZWYgQXV0aENyZWRlbnRpYWxzXG4gKiBAcHJvcGVydHkge3N0cmluZ30gdXNlciAtIE5vbi1lbXB0eSB1c2VyIG5hbWVcbiAqIEBwcm9wZXJ0eSB7c3RyaW5nfSBwYXNzIC0gTm9uLWVtcHR5IHBhc3N3b3JkXG4gKi9cblxuLyoqXG4gKiBUaGlzIHR5cGUgaXMgdXNlZCBpbiB7QGxpbmtjb2RlIHVwbG9hZEZpbGV9IGlmIHRoZSByZW1vdGUgbG9jYXRpb24gdXNlcyB0aGUgYGZ0cGAgcHJvdG9jb2wsIGFuZCBkaXN0aW5ndWlzaGVzIHRoZSB0eXBlIGZyb20ge0BsaW5rY29kZSBIdHRwVXBsb2FkT3B0aW9uc30uXG4gKiBAdHlwZWRlZiBOb3RIdHRwVXBsb2FkT3B0aW9uc1xuICogQHByb3BlcnR5IHtuZXZlcn0gaGVhZGVyc1xuICogQHByb3BlcnR5IHtuZXZlcn0gbWV0aG9kXG4gKiBAcHJvcGVydHkge25ldmVyfSB0aW1lb3V0XG4gKiBAcHJvcGVydHkge25ldmVyfSBmaWxlRmllbGROYW1lXG4gKiBAcHJvcGVydHkge25ldmVyfSBmb3JtRmllbGRzXG4gKi9cblxuLyoqXG4gKiBTcGVjaWZpYyBvcHRpb25zIGZvciB7QGxpbmtjb2RlIHVwbG9hZEZpbGV9IGlmIHRoZSByZW1vdGUgbG9jYXRpb24gdXNlcyB0aGUgYGh0dHAocylgIHByb3RvY29sXG4gKiBAdHlwZWRlZiBIdHRwVXBsb2FkT3B0aW9uc1xuICogQHByb3BlcnR5IHtpbXBvcnQoJ2FybW9yLXR5cGVzJykuSFRUUEhlYWRlcnN9IFtoZWFkZXJzXSAtIEFkZGl0aW9uYWwgcmVxdWVzdCBoZWFkZXJzIG1hcHBpbmdcbiAqIEBwcm9wZXJ0eSB7aW1wb3J0KCdheGlvcycpLk1ldGhvZH0gW21ldGhvZD0nUE9TVCddIC0gVGhlIEhUVFAgbWV0aG9kIHVzZWQgZm9yIGZpbGUgdXBsb2FkXG4gKiBAcHJvcGVydHkge251bWJlcn0gW3RpbWVvdXRdIC0gVGhlIGFjdHVhbCByZXF1ZXN0IHRpbWVvdXQgaW4gbWlsbGlzZWNvbmRzOyBkZWZhdWx0cyB0byB7QGxpbmtjb2RlIERFRkFVTFRfVElNRU9VVF9NU31cbiAqIEBwcm9wZXJ0eSB7c3RyaW5nfSBbZmlsZUZpZWxkTmFtZT0nZmlsZSddIC0gVGhlIG5hbWUgb2YgdGhlIGZvcm0gZmllbGQgY29udGFpbmluZyB0aGUgZmlsZVxuICogY29udGVudCB0byBiZSB1cGxvYWRlZC4gQW55IGZhbHN5IHZhbHVlIG1ha2UgdGhlIHJlcXVlc3QgdG8gdXNlIG5vbi1tdWx0aXBhcnQgdXBsb2FkXG4gKiBAcHJvcGVydHkge1JlY29yZDxzdHJpbmcsIGFueT4gfCBbc3RyaW5nLCBhbnldW119IFtmb3JtRmllbGRzXSAtIFRoZSBhZGRpdGlvbmFsIGZvcm0gZmllbGRzXG4gKiB0byBiZSBpbmNsdWRlZCBpbnRvIHRoZSB1cGxvYWQgcmVxdWVzdC4gVGhpcyBwcm9wZXJ0eSBpcyBvbmx5IGNvbnNpZGVyZWQgaWZcbiAqIGBmaWxlRmllbGROYW1lYCBpcyBzZXRcbiAqL1xuIl0sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7QUFBQSxJQUFBQSxPQUFBLEdBQUFDLHNCQUFBLENBQUFDLE9BQUE7QUFDQSxJQUFBQyxHQUFBLEdBQUFGLHNCQUFBLENBQUFDLE9BQUE7QUFDQSxJQUFBRSxTQUFBLEdBQUFILHNCQUFBLENBQUFDLE9BQUE7QUFDQSxJQUFBRyxLQUFBLEdBQUFILE9BQUE7QUFDQSxJQUFBSSxPQUFBLEdBQUFMLHNCQUFBLENBQUFDLE9BQUE7QUFDQSxJQUFBSyxNQUFBLEdBQUFOLHNCQUFBLENBQUFDLE9BQUE7QUFDQSxJQUFBTSxPQUFBLEdBQUFQLHNCQUFBLENBQUFDLE9BQUE7QUFDQSxJQUFBTyxNQUFBLEdBQUFSLHNCQUFBLENBQUFDLE9BQUE7QUFDQSxJQUFBUSxTQUFBLEdBQUFULHNCQUFBLENBQUFDLE9BQUE7QUFFQSxNQUFNUyxrQkFBa0IsR0FBRyxDQUFDLEdBQUcsRUFBRSxHQUFHLElBQUk7QUFPeEMsU0FBU0MsV0FBV0EsQ0FBRUMsS0FBSyxFQUFFO0VBQzNCLE9BQU9DLGVBQUMsQ0FBQ0MsYUFBYSxDQUFDRixLQUFLLENBQUM7QUFDL0I7QUFPQSxT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
+}
+/**
+ * Uploads the given file to a remote location. HTTP(S) and FTP
+ * protocols are supported.
+ *
+ * @param {string} localPath - The path to a file on the local storage.
+ * @param {string} remoteUri - The remote URI to upload the file to.
+ * @param {(HttpUploadOptions|NotHttpUploadOptions) & NetOptions} [uploadOptions]
+ * @returns {Promise<void>}
+ */
+async function uploadFile(localPath, remoteUri, uploadOptions = /** @type {(HttpUploadOptions|NotHttpUploadOptions) & NetOptions} */ ({})) {
+    if (!(await fs_1.default.exists(localPath))) {
+        throw new Error(`'${localPath}' does not exists or is not accessible`);
+    }
+    const { isMetered = true } = uploadOptions;
+    const url = new URL(remoteUri);
+    const { size } = await fs_1.default.stat(localPath);
+    if (isMetered) {
+        logger_1.default.info(`Uploading '${localPath}' of ${(0, util_1.toReadableSizeString)(size)} size to '${remoteUri}'`);
+    }
+    const timer = new timing_1.default().start();
+    if (isHttpUploadOptions(uploadOptions, url)) {
+        if (!uploadOptions.fileFieldName) {
+            uploadOptions.headers = {
+                ...(lodash_1.default.isPlainObject(uploadOptions.headers) ? uploadOptions.headers : {}),
+                'Content-Length': size,
+            };
+        }
+        await uploadFileToHttp(fs_1.default.createReadStream(localPath), url, uploadOptions);
+    }
+    else if (isNotHttpUploadOptions(uploadOptions, url)) {
+        await uploadFileToFtp(fs_1.default.createReadStream(localPath), url, uploadOptions);
+    }
+    else {
+        throw new Error(`Cannot upload the file at '${localPath}' to '${remoteUri}'. ` +
+            `Unsupported remote protocol '${url.protocol}'. ` +
+            `Only http/https and ftp/ftps protocols are supported.`);
+    }
+    if (isMetered) {
+        logger_1.default.info(`Uploaded '${localPath}' of ${(0, util_1.toReadableSizeString)(size)} size in ` +
+            `${timer.getDuration().asSeconds.toFixed(3)}s`);
+    }
+}
+exports.uploadFile = uploadFile;
+/**
+ * Downloads the given file via HTTP(S)
+ *
+ * @param {string} remoteUrl - The remote url
+ * @param {string} dstPath - The local path to download the file to
+ * @param {DownloadOptions & NetOptions} [downloadOptions]
+ * @throws {Error} If download operation fails
+ */
+async function downloadFile(remoteUrl, dstPath, downloadOptions = /** @type {DownloadOptions & NetOptions} */ ({})) {
+    const { isMetered = true, auth, timeout = DEFAULT_TIMEOUT_MS, headers } = downloadOptions;
+    /**
+     * @type {import('axios').AxiosRequestConfig}
+     */
+    const requestOpts = {
+        url: remoteUrl,
+        responseType: 'stream',
+        timeout,
+    };
+    const axiosAuth = toAxiosAuth(auth);
+    if (axiosAuth) {
+        requestOpts.auth = axiosAuth;
+    }
+    if (lodash_1.default.isPlainObject(headers)) {
+        requestOpts.headers = headers;
+    }
+    const timer = new timing_1.default().start();
+    let responseLength;
+    try {
+        const writer = fs_1.default.createWriteStream(dstPath);
+        const { data: responseStream, headers: responseHeaders } = await (0, axios_1.default)(requestOpts);
+        responseLength = parseInt(responseHeaders['content-length'] || '0', 10);
+        responseStream.pipe(writer);
+        await new bluebird_1.default((resolve, reject) => {
+            responseStream.once('error', reject);
+            writer.once('finish', resolve);
+            writer.once('error', (e) => {
+                responseStream.unpipe(writer);
+                reject(e);
+            });
+        });
+    }
+    catch (err) {
+        throw new Error(`Cannot download the file from ${remoteUrl}: ${err.message}`);
+    }
+    const { size } = await fs_1.default.stat(dstPath);
+    if (responseLength && size !== responseLength) {
+        await fs_1.default.rimraf(dstPath);
+        throw new Error(`The size of the file downloaded from ${remoteUrl} (${size} bytes) ` +
+            `differs from the one in Content-Length response header (${responseLength} bytes)`);
+    }
+    if (isMetered) {
+        const secondsElapsed = timer.getDuration().asSeconds;
+        logger_1.default.debug(`${remoteUrl} (${(0, util_1.toReadableSizeString)(size)}) ` +
+            `has been downloaded to '${dstPath}' in ${secondsElapsed.toFixed(3)}s`);
+        if (secondsElapsed >= 2) {
+            const bytesPerSec = Math.floor(size / secondsElapsed);
+            logger_1.default.debug(`Approximate download speed: ${(0, util_1.toReadableSizeString)(bytesPerSec)}/s`);
+        }
+    }
+}
+exports.downloadFile = downloadFile;
+/**
+ * Common options for {@linkcode uploadFile} and {@linkcode downloadFile}.
+ * @typedef NetOptions
+ * @property {boolean} [isMetered=true] - Whether to log the actual download performance
+ * (e.g. timings and speed)
+ * @property {AuthCredentials} [auth] - Authentication credentials
+ */
+/**
+ * Specific options for {@linkcode downloadFile}.
+ * @typedef DownloadOptions
+ * @property {number} [timeout] - The actual request timeout in milliseconds; defaults to {@linkcode DEFAULT_TIMEOUT_MS}
+ * @property {Record<string,any>} [headers] - Request headers mapping
+ */
+/**
+ * Basic auth credentials; used by {@linkcode NetOptions}.
+ * @typedef AuthCredentials
+ * @property {string} user - Non-empty user name
+ * @property {string} pass - Non-empty password
+ */
+/**
+ * This type is used in {@linkcode uploadFile} if the remote location uses the `ftp` protocol, and distinguishes the type from {@linkcode HttpUploadOptions}.
+ * @typedef NotHttpUploadOptions
+ * @property {never} headers
+ * @property {never} method
+ * @property {never} timeout
+ * @property {never} fileFieldName
+ * @property {never} formFields
+ */
+/**
+ * Specific options for {@linkcode uploadFile} if the remote location uses the `http(s)` protocol
+ * @typedef HttpUploadOptions
+ * @property {import('armor-types').HTTPHeaders} [headers] - Additional request headers mapping
+ * @property {import('axios').Method} [method='POST'] - The HTTP method used for file upload
+ * @property {number} [timeout] - The actual request timeout in milliseconds; defaults to {@linkcode DEFAULT_TIMEOUT_MS}
+ * @property {string} [fileFieldName='file'] - The name of the form field containing the file
+ * content to be uploaded. Any falsy value make the request to use non-multipart upload
+ * @property {Record<string, any> | [string, any][]} [formFields] - The additional form fields
+ * to be included into the upload request. This property is only considered if
+ * `fileFieldName` is set
+ */
+//# sourceMappingURL=net.js.map

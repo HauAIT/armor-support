@@ -1,75 +1,112 @@
 "use strict";
-
-var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault");
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = exports.Timer = exports.Duration = void 0;
-require("source-map-support/register");
-var _lodash = _interopRequireDefault(require("lodash"));
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Duration = exports.Timer = void 0;
+const lodash_1 = __importDefault(require("lodash"));
 const NS_PER_S = 1e9;
 const NS_PER_MS = 1e6;
+/**
+ * Class representing a duration, encapsulating the number and units.
+ */
 class Duration {
-  constructor(nanos) {
-    this._nanos = nanos;
-  }
-  get nanos() {
-    return this._nanos;
-  }
-  get asNanoSeconds() {
-    return this.nanos;
-  }
-  get asMilliSeconds() {
-    return this.nanos / NS_PER_MS;
-  }
-  get asSeconds() {
-    return this.nanos / NS_PER_S;
-  }
-  toString() {
-    return this.asMilliSeconds.toFixed(0);
-  }
+    constructor(nanos) {
+        this._nanos = nanos;
+    }
+    get nanos() {
+        return this._nanos;
+    }
+    /**
+     * Get the duration as nanoseconds
+     *
+     * @returns {number} The duration as nanoseconds
+     */
+    get asNanoSeconds() {
+        return this.nanos;
+    }
+    /**
+     * Get the duration converted into milliseconds
+     *
+     * @returns {number} The duration as milliseconds
+     */
+    get asMilliSeconds() {
+        return this.nanos / NS_PER_MS;
+    }
+    /**
+     * Get the duration converted into seconds
+     *
+     * @returns {number} The duration fas seconds
+     */
+    get asSeconds() {
+        return this.nanos / NS_PER_S;
+    }
+    toString() {
+        // default to milliseconds, rounded
+        return this.asMilliSeconds.toFixed(0);
+    }
 }
 exports.Duration = Duration;
 class Timer {
-  constructor() {
-    this._startTime = null;
-  }
-  get startTime() {
-    return this._startTime;
-  }
-  start() {
-    if (!_lodash.default.isNull(this.startTime)) {
-      throw new Error('Timer has already been started.');
+    /**
+     * Creates a timer
+     */
+    constructor() {
+        this._startTime = null;
     }
-    this._startTime = _lodash.default.isFunction(process.hrtime.bigint) ? process.hrtime.bigint() : process.hrtime();
-    return this;
-  }
-  getDuration() {
-    if (_lodash.default.isNull(this.startTime)) {
-      throw new Error(`Unable to get duration. Timer was not started`);
+    get startTime() {
+        return this._startTime;
     }
-    let nanoDuration;
-    if (_lodash.default.isArray(this.startTime)) {
-      const [seconds, nanos] = process.hrtime(this.startTime);
-      nanoDuration = seconds * NS_PER_S + nanos;
-    } else if (typeof this.startTime === 'bigint' && _lodash.default.isFunction(process.hrtime.bigint)) {
-      const endTime = process.hrtime.bigint();
-      nanoDuration = Number(endTime - this.startTime);
-    } else {
-      throw new Error(`Unable to get duration. Start time '${this.startTime}' cannot be parsed`);
+    /**
+     * Start the timer
+     *
+     * @return {Timer} The current instance, for chaining
+     */
+    start() {
+        if (!lodash_1.default.isNull(this.startTime)) {
+            throw new Error('Timer has already been started.');
+        }
+        // once Node 10 is no longer supported, this check can be removed
+        this._startTime = lodash_1.default.isFunction(process.hrtime.bigint)
+            ? process.hrtime.bigint()
+            : process.hrtime();
+        return this;
     }
-    return new Duration(nanoDuration);
-  }
-  toString() {
-    try {
-      return this.getDuration().toString();
-    } catch (err) {
-      return `<err: ${err.message}>`;
+    /**
+     * Get the duration since the timer was started
+     *
+     * @return {Duration} the duration
+     */
+    getDuration() {
+        if (lodash_1.default.isNull(this.startTime)) {
+            throw new Error(`Unable to get duration. Timer was not started`);
+        }
+        let nanoDuration;
+        if (lodash_1.default.isArray(this.startTime)) {
+            // startTime was created using process.hrtime()
+            const [seconds, nanos] = process.hrtime(this.startTime);
+            nanoDuration = seconds * NS_PER_S + nanos;
+        }
+        else if (typeof this.startTime === 'bigint' && lodash_1.default.isFunction(process.hrtime.bigint)) {
+            // startTime was created using process.hrtime.bigint()
+            const endTime = process.hrtime.bigint();
+            // get the difference, and convert to number
+            nanoDuration = Number(endTime - this.startTime);
+        }
+        else {
+            throw new Error(`Unable to get duration. Start time '${this.startTime}' cannot be parsed`);
+        }
+        return new Duration(nanoDuration);
     }
-  }
+    toString() {
+        try {
+            return this.getDuration().toString();
+        }
+        catch (err) {
+            return `<err: ${err.message}>`;
+        }
+    }
 }
 exports.Timer = Timer;
-var _default = exports.default = Timer;require('source-map-support').install();
-
-
-//# sourceMappingURL=data:application/json;charset=utf8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoibGliL3RpbWluZy5qcyIsIm5hbWVzIjpbIl9sb2Rhc2giLCJfaW50ZXJvcFJlcXVpcmVEZWZhdWx0IiwicmVxdWlyZSIsIk5TX1BFUl9TIiwiTlNfUEVSX01TIiwiRHVyYXRpb24iLCJjb25zdHJ1Y3RvciIsIm5hbm9zIiwiX25hbm9zIiwiYXNOYW5vU2Vjb25kcyIsImFzTWlsbGlTZWNvbmRzIiwiYXNTZWNvbmRzIiwidG9TdHJpbmciLCJ0b0ZpeGVkIiwiZXhwb3J0cyIsIlRpbWVyIiwiX3N0YXJ0VGltZSIsInN0YXJ0VGltZSIsInN0YXJ0IiwiXyIsImlzTnVsbCIsIkVycm9yIiwiaXNGdW5jdGlvbiIsInByb2Nlc3MiLCJocnRpbWUiLCJiaWdpbnQiLCJnZXREdXJhdGlvbiIsIm5hbm9EdXJhdGlvbiIsImlzQXJyYXkiLCJzZWNvbmRzIiwiZW5kVGltZSIsIk51bWJlciIsImVyciIsIm1lc3NhZ2UiLCJfZGVmYXVsdCIsImRlZmF1bHQiXSwic291cmNlUm9vdCI6Ii4uLy4uIiwic291cmNlcyI6WyJsaWIvdGltaW5nLmpzIl0sInNvdXJjZXNDb250ZW50IjpbImltcG9ydCBfIGZyb20gJ2xvZGFzaCc7XG5cbmNvbnN0IE5TX1BFUl9TID0gMWU5O1xuY29uc3QgTlNfUEVSX01TID0gMWU2O1xuXG4vKipcbiAqIENsYXNzIHJlcHJlc2VudGluZyBhIGR1cmF0aW9uLCBlbmNhcHN1bGF0aW5nIHRoZSBudW1iZXIgYW5kIHVuaXRzLlxuICovXG5jbGFzcyBEdXJhdGlvbiB7XG4gIGNvbnN0cnVjdG9yIChuYW5vcykge1xuICAgIHRoaXMuX25hbm9zID0gbmFub3M7XG4gIH1cblxuICBnZXQgbmFub3MgKCkge1xuICAgIHJldHVybiB0aGlzLl9uYW5vcztcbiAgfVxuXG4gIC8qKlxuICAgKiBHZXQgdGhlIGR1cmF0aW9uIGFzIG5hbm9zZWNvbmRzXG4gICAqXG4gICAqIEByZXR1cm5zIHtudW1iZXJ9IFRoZSBkdXJhdGlvbiBhcyBuYW5vc2Vjb25kc1xuICAgKi9cbiAgZ2V0IGFzTmFub1NlY29uZHMgKCkge1xuICAgIHJldHVybiB0aGlzLm5hbm9zO1xuICB9XG5cbiAgLyoqXG4gICAqIEdldCB0aGUgZHVyYXRpb24gY29udmVydGVkIGludG8gbWlsbGlzZWNvbmRzXG4gICAqXG4gICAqIEByZXR1cm5zIHtudW1iZXJ9IFRoZSBkdXJhdGlvbiBhcyBtaWxsaXNlY29uZHNcbiAgICovXG4gIGdldCBhc01pbGxpU2Vjb25kcyAoKSB7XG4gICAgcmV0dXJuIHRoaXMubmFub3MgLyBOU19QRVJfTVM7XG4gIH1cblxuICAvKipcbiAgICogR2V0IHRoZSBkdXJhdGlvbiBjb252ZXJ0ZWQgaW50byBzZWNvbmRzXG4gICAqXG4gICAqIEByZXR1cm5zIHtudW1iZXJ9IFRoZSBkdXJhdGlvbiBmYXMgc2Vjb25kc1xuICAgKi9cbiAgZ2V0IGFzU2Vjb25kcyAoKSB7XG4gICAgcmV0dXJuIHRoaXMubmFub3MgLyBOU19QRVJfUztcbiAgfVxuXG4gIHRvU3RyaW5nICgpIHtcbiAgICAvLyBkZWZhdWx0IHRvIG1pbGxpc2Vjb25kcywgcm91bmRlZFxuICAgIHJldHVybiB0aGlzLmFzTWlsbGlTZWNvbmRzLnRvRml4ZWQoMCk7XG4gIH1cbn1cblxuY2xhc3MgVGltZXIge1xuICAvKipcbiAgICogQ3JlYXRlcyBhIHRpbWVyXG4gICAqL1xuICBjb25zdHJ1Y3RvciAoKSB7XG4gICAgdGhpcy5fc3RhcnRUaW1lID0gbnVsbDtcbiAgfVxuXG4gIGdldCBzdGFydFRpbWUgKCkge1xuICAgIHJldHVybiB0aGlzLl9zdGFydFRpbWU7XG4gIH1cblxuICAvKipcbiAgICogU3RhcnQgdGhlIHRpbWVyXG4gICAqXG4gICAqIEByZXR1cm4ge1RpbWVyfSBUaGUgY3VycmVudCBpbnN0YW5jZSwgZm9yIGNoYWluaW5nXG4gICAqL1xuICBzdGFydCAoKSB7XG4gICAgaWYgKCFfLmlzTnVsbCh0aGlzLnN0YXJ0VGltZSkpIHtcbiAgICAgIHRocm93IG5ldyBFcnJvcignVGltZXIgaGFzIGFscmVhZHkgYmVlbiBzdGFydGVkLicpO1xuICAgIH1cbiAgICAvLyBvbmNlIE5vZGUgMTAgaXMgbm8gbG9uZ2VyIHN1cHBvcnRlZCwgdGhpcyBjaGVjayBjYW4gYmUgcmVtb3ZlZFxuICAgIHRoaXMuX3N0YXJ0VGltZSA9IF8uaXNGdW5jdGlvbihwcm9jZXNzLmhydGltZS5iaWdpbnQpXG4gICAgICA/IHByb2Nlc3MuaHJ0aW1lLmJpZ2ludCgpXG4gICAgICA6IHByb2Nlc3MuaHJ0aW1lKCk7XG4gICAgcmV0dXJuIHRoaXM7XG4gIH1cblxuICAvKipcbiAgICogR2V0IHRoZSBkdXJhdGlvbiBzaW5jZSB0aGUgdGltZXIgd2FzIHN0YXJ0ZWRcbiAgICpcbiAgICogQHJldHVybiB7RHVyYXRpb259IHRoZSBkdXJhdGlvblxuICAgKi9cbiAgZ2V0RHVyYXRpb24gKCkge1xuICAgIGlmIChfLmlzTnVsbCh0aGlzLnN0YXJ0VGltZSkpIHtcbiAgICAgIHRocm93IG5ldyBFcnJvcihgVW5hYmxlIHRvIGdldCBkdXJhdGlvbi4gVGltZXIgd2FzIG5vdCBzdGFydGVkYCk7XG4gICAgfVxuXG4gICAgbGV0IG5hbm9EdXJhdGlvbjtcbiAgICBpZiAoXy5pc0FycmF5KHRoaXMuc3RhcnRUaW1lKSkge1xuICAgICAgLy8gc3RhcnRUaW1lIHdhcyBjcmVhdGVkIHVzaW5nIHByb2Nlc3MuaHJ0aW1lKClcbiAgICAgIGNvbnN0IFtzZWNvbmRzLCBuYW5vc10gPSBwcm9jZXNzLmhydGltZSh0aGlzLnN0YXJ0VGltZSk7XG4gICAgICBuYW5vRHVyYXRpb24gPSBzZWNvbmRzICogTlNfUEVSX1MgKyBuYW5vcztcbiAgICB9IGVsc2UgaWYgKHR5cGVvZiB0aGlzLnN0YXJ0VGltZSA9PT0gJ2JpZ2ludCcgJiYgXy5pc0Z1bmN0aW9uKHByb2Nlc3MuaHJ0aW1lLmJpZ2ludCkpIHtcbiAgICAgIC8vIHN0YXJ0VGltZSB3YXMgY3JlYXRlZCB1c2luZyBwcm9jZXNzLmhydGltZS5iaWdpbnQoKVxuICAgICAgY29uc3QgZW5kVGltZSA9IHByb2Nlc3MuaHJ0aW1lLmJpZ2ludCgpO1xuICAgICAgLy8gZ2V0IHRoZSBkaWZmZXJlbmNlLCBhbmQgY29udmVydCB0byBudW1iZXJcbiAgICAgIG5hbm9EdXJhdGlvbiA9IE51bWJlcihlbmRUaW1lIC0gdGhpcy5zdGFydFRpbWUpO1xuICAgIH0gZWxzZSB7XG4gICAgICB0aHJvdyBuZXcgRXJyb3IoYFVuYWJsZSB0byBnZXQgZHVyYXRpb24uIFN0YXJ0IHRpbWUgJyR7dGhpcy5zdGFydFRpbWV9JyBjYW5ub3QgYmUgcGFyc2VkYCk7XG4gICAgfVxuXG4gICAgcmV0dXJuIG5ldyBEdXJhdGlvbihuYW5vRHVyYXRpb24pO1xuICB9XG5cbiAgdG9TdHJpbmcgKCkge1xuICAgIHRyeSB7XG4gICAgICByZXR1cm4gdGhpcy5nZXREdXJhdGlvbigpLnRvU3RyaW5nKCk7XG4gICAgfSBjYXRjaCAoZXJyKSB7XG4gICAgICByZXR1cm4gYDxlcnI6ICR7ZXJyLm1lc3NhZ2V9PmA7XG4gICAgfVxuICB9XG59XG5cbmV4cG9ydCB7VGltZXIsIER1cmF0aW9ufTtcbmV4cG9ydCBkZWZhdWx0IFRpbWVyO1xuIl0sIm1hcHBpbmdzIjoiOzs7Ozs7OztBQUFBLElBQUFBLE9BQUEsR0FBQUMsc0JBQUEsQ0FBQUMsT0FBQTtBQUVBLE1BQU1DLFFBQVEsR0FBRyxHQUFHO0FBQ3BCLE1BQU1DLFNBQVMsR0FBRyxHQUFHO0FBS3JCLE1BQU1DLFFBQVEsQ0FBQztFQUNiQyxXQUFXQSxDQUFFQyxLQUFLLEVBQUU7SUFDbEIsSUFBSSxDQUFDQyxNQUFNLEdBQUdELEtBQUs7RUFDckI7RUFFQSxJQUFJQSxLQUFLQSxDQUFBLEVBQUk7SUFDWCxPQUFPLElBQUksQ0FBQ0MsTUFBTTtFQUNwQjtFQU9BLElBQUlDLGFBQWFBLENBQUEsRUFBSTtJQUNuQixPQUFPLElBQUksQ0FBQ0YsS0FBSztFQUNuQjtFQU9BLElBQUlHLGNBQWNBLENBQUEsRUFBSTtJQUNwQixPQUFPLElBQUksQ0FBQ0gsS0FBSyxHQUFHSCxTQUFTO0VBQy9CO0VBT0EsSUFB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
+exports.default = Timer;
+//# sourceMappingURL=timing.js.map

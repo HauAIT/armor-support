@@ -1,118 +1,181 @@
 "use strict";
-
-var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault");
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.MJpegStream = void 0;
-require("source-map-support/register");
-var _lodash = _interopRequireDefault(require("lodash"));
-var _logger = _interopRequireDefault(require("./logger"));
-var _bluebird = _interopRequireDefault(require("bluebird"));
-var _imageUtil = require("./image-util");
-var _stream = require("stream");
-var _node = require("./node");
-var _axios = _interopRequireDefault(require("axios"));
+const lodash_1 = __importDefault(require("lodash"));
+const logger_1 = __importDefault(require("./logger"));
+const bluebird_1 = __importDefault(require("bluebird"));
+const image_util_1 = require("./image-util");
+const stream_1 = require("stream");
+const node_1 = require("./node");
+const axios_1 = __importDefault(require("axios"));
+// lazy load this, as it might not be available
 let MJpegConsumer = null;
+/**
+ * @throws {Error} If `mjpeg-consumer` module is not installed or cannot be loaded
+ */
 async function initMJpegConsumer() {
-  if (!MJpegConsumer) {
-    try {
-      MJpegConsumer = await (0, _node.requirePackage)('mjpeg-consumer');
-    } catch (ign) {}
-  }
-  if (!MJpegConsumer) {
-    throw new Error('mjpeg-consumer module is required to use MJPEG-over-HTTP features. ' + 'Please install it first (npm i -g mjpeg-consumer) and restart Armor.');
-  }
+    if (!MJpegConsumer) {
+        try {
+            MJpegConsumer = await (0, node_1.requirePackage)('mjpeg-consumer');
+        }
+        catch (ign) { }
+    }
+    if (!MJpegConsumer) {
+        throw new Error('mjpeg-consumer module is required to use MJPEG-over-HTTP features. ' +
+            'Please install it first (npm i -g mjpeg-consumer) and restart Armor.');
+    }
 }
+// amount of time to wait for the first image in the stream
 const MJPEG_SERVER_TIMEOUT_MS = 10000;
-class MJpegStream extends _stream.Writable {
-  constructor(mJpegUrl, errorHandler = _lodash.default.noop, options = {}) {
-    super(options);
-    this.updateCount = 0;
-    this.errorHandler = errorHandler;
-    this.url = mJpegUrl;
-    this.clear();
-  }
-  get lastChunkBase64() {
-    const lastChunk = this.lastChunk;
-    return !_lodash.default.isEmpty(this.lastChunk) && _lodash.default.isBuffer(this.lastChunk) ? lastChunk.toString('base64') : null;
-  }
-  async lastChunkPNG() {
-    const lastChunk = this.lastChunk;
-    if (_lodash.default.isEmpty(lastChunk) || !_lodash.default.isBuffer(lastChunk)) {
-      return null;
+/** Class which stores the last bit of data streamed into it */
+class MJpegStream extends stream_1.Writable {
+    /**
+     * Create an MJpegStream
+     * @param {string} mJpegUrl - URL of MJPEG-over-HTTP stream
+     * @param {function} [errorHandler=noop] - additional function that will be
+     * called in the case of any errors.
+     * @param {object} [options={}] - Options to pass to the Writable constructor
+     */
+    constructor(mJpegUrl, errorHandler = lodash_1.default.noop, options = {}) {
+        super(options);
+        /**
+         * @type {number}
+         */
+        this.updateCount = 0;
+        this.errorHandler = errorHandler;
+        this.url = mJpegUrl;
+        this.clear();
     }
-    try {
-      return await (0, _imageUtil.requireSharp)()(lastChunk).png().toBuffer();
-    } catch (e) {
-      return null;
+    /**
+     * Get the base64-encoded version of the JPEG
+     *
+     * @returns {?string} base64-encoded JPEG image data
+     * or `null` if no image can be parsed
+     */
+    get lastChunkBase64() {
+        const lastChunk = /** @type {Buffer} */ (this.lastChunk);
+        return !lodash_1.default.isEmpty(this.lastChunk) && lodash_1.default.isBuffer(this.lastChunk)
+            ? lastChunk.toString('base64')
+            : null;
     }
-  }
-  async lastChunkPNGBase64() {
-    const png = await this.lastChunkPNG();
-    return png ? png.toString('base64') : null;
-  }
-  clear() {
-    this.registerStartSuccess = null;
-    this.registerStartFailure = null;
-    this.responseStream = null;
-    this.consumer = null;
-    this.lastChunk = null;
-    this.updateCount = 0;
-  }
-  async start(serverTimeout = MJPEG_SERVER_TIMEOUT_MS) {
-    this.stop();
-    await initMJpegConsumer();
-    this.consumer = new MJpegConsumer();
-    const startPromise = new _bluebird.default((res, rej) => {
-      this.registerStartSuccess = res;
-      this.registerStartFailure = rej;
-    }).timeout(serverTimeout, `Waited ${serverTimeout}ms but the MJPEG server never sent any images`);
-    const url = this.url;
-    const onErr = err => {
-      this.lastChunk = null;
-      _logger.default.error(`Error getting MJpeg screenshot chunk: ${err.message}`);
-      this.errorHandler(err);
-      if (this.registerStartFailure) {
-        this.registerStartFailure(err);
-      }
-    };
-    const onClose = () => {
-      _logger.default.debug(`The connection to MJPEG server at ${url} has been closed`);
-      this.lastChunk = null;
-    };
-    try {
-      this.responseStream = (await (0, _axios.default)({
-        url,
-        responseType: 'stream',
-        timeout: serverTimeout
-      })).data;
-    } catch (e) {
-      return onErr(e);
+    /**
+     * Get the PNG version of the JPEG buffer
+     *
+     * @returns {Promise<Buffer?>} PNG image data or `null` if no PNG
+     * image can be parsed
+     */
+    async lastChunkPNG() {
+        const lastChunk = /** @type {Buffer} */ (this.lastChunk);
+        if (lodash_1.default.isEmpty(lastChunk) || !lodash_1.default.isBuffer(lastChunk)) {
+            return null;
+        }
+        try {
+            return await (0, image_util_1.requireSharp)()(lastChunk).png().toBuffer();
+        }
+        catch (e) {
+            return null;
+        }
     }
-    this.responseStream.once('close', onClose).on('error', onErr).pipe(this.consumer).pipe(this);
-    await startPromise;
-  }
-  stop() {
-    if (!this.consumer) {
-      return;
+    /**
+     * Get the base64-encoded version of the PNG
+     *
+     * @returns {Promise<string?>} base64-encoded PNG image data
+     * or `null` if no image can be parsed
+     */
+    async lastChunkPNGBase64() {
+        const png = await this.lastChunkPNG();
+        return png ? png.toString('base64') : null;
     }
-    this.responseStream.unpipe(this.consumer);
-    this.consumer.unpipe(this);
-    this.responseStream.destroy();
-    this.clear();
-  }
-  write(data) {
-    this.lastChunk = data;
-    this.updateCount++;
-    if (this.registerStartSuccess) {
-      this.registerStartSuccess();
-      this.registerStartSuccess = null;
+    /**
+     * Reset internal state
+     */
+    clear() {
+        this.registerStartSuccess = null;
+        this.registerStartFailure = null;
+        this.responseStream = null;
+        this.consumer = null;
+        this.lastChunk = null;
+        this.updateCount = 0;
     }
-    return true;
-  }
+    /**
+     * Start reading the MJpeg stream and storing the last image
+     */
+    async start(serverTimeout = MJPEG_SERVER_TIMEOUT_MS) {
+        // ensure we're not started already
+        this.stop();
+        await initMJpegConsumer();
+        this.consumer = new MJpegConsumer();
+        // use the deferred pattern so we can wait for the start of the stream
+        // based on what comes in from an external pipe
+        const startPromise = new bluebird_1.default((res, rej) => {
+            this.registerStartSuccess = res;
+            this.registerStartFailure = rej;
+        })
+            // start a timeout so that if the server does not return data, we don't
+            // block forever.
+            .timeout(serverTimeout, `Waited ${serverTimeout}ms but the MJPEG server never sent any images`);
+        const url = this.url;
+        const onErr = (err) => {
+            // Make sure we don't get an outdated screenshot if there was an error
+            this.lastChunk = null;
+            logger_1.default.error(`Error getting MJpeg screenshot chunk: ${err.message}`);
+            this.errorHandler(err);
+            if (this.registerStartFailure) {
+                this.registerStartFailure(err);
+            }
+        };
+        const onClose = () => {
+            logger_1.default.debug(`The connection to MJPEG server at ${url} has been closed`);
+            this.lastChunk = null;
+        };
+        try {
+            this.responseStream = (await (0, axios_1.default)({
+                url,
+                responseType: 'stream',
+                timeout: serverTimeout,
+            })).data;
+        }
+        catch (e) {
+            return onErr(e);
+        }
+        this.responseStream
+            .once('close', onClose)
+            .on('error', onErr) // ensure we do something with errors
+            .pipe(this.consumer) // allow chunking and transforming of jpeg data
+            .pipe(this); // send the actual jpegs to ourself
+        await startPromise;
+    }
+    /**
+     * Stop reading the MJpeg stream. Ensure we disconnect all the pipes and stop
+     * the HTTP request itself. Then reset the state.
+     */
+    stop() {
+        if (!this.consumer) {
+            return;
+        }
+        this.responseStream.unpipe(this.consumer);
+        this.consumer.unpipe(this);
+        this.responseStream.destroy();
+        this.clear();
+    }
+    /**
+     * Override the Writable write() method in order to save the last image and
+     * log the number of images we have received
+     * @override
+     * @param {Buffer} data - binary data streamed from the MJpeg consumer
+     */
+    write(data) {
+        this.lastChunk = data;
+        this.updateCount++;
+        if (this.registerStartSuccess) {
+            this.registerStartSuccess();
+            this.registerStartSuccess = null;
+        }
+        return true;
+    }
 }
-exports.MJpegStream = MJpegStream;require('source-map-support').install();
-
-
-//# sourceMappingURL=data:application/json;charset=utf8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoibGliL21qcGVnLmpzIiwibmFtZXMiOlsiX2xvZGFzaCIsIl9pbnRlcm9wUmVxdWlyZURlZmF1bHQiLCJyZXF1aXJlIiwiX2xvZ2dlciIsIl9ibHVlYmlyZCIsIl9pbWFnZVV0aWwiLCJfc3RyZWFtIiwiX25vZGUiLCJfYXhpb3MiLCJNSnBlZ0NvbnN1bWVyIiwiaW5pdE1KcGVnQ29uc3VtZXIiLCJyZXF1aXJlUGFja2FnZSIsImlnbiIsIkVycm9yIiwiTUpQRUdfU0VSVkVSX1RJTUVPVVRfTVMiLCJNSnBlZ1N0cmVhbSIsIldyaXRhYmxlIiwiY29uc3RydWN0b3IiLCJtSnBlZ1VybCIsImVycm9ySGFuZGxlciIsIl8iLCJub29wIiwib3B0aW9ucyIsInVwZGF0ZUNvdW50IiwidXJsIiwiY2xlYXIiLCJsYXN0Q2h1bmtCYXNlNjQiLCJsYXN0Q2h1bmsiLCJpc0VtcHR5IiwiaXNCdWZmZXIiLCJ0b1N0cmluZyIsImxhc3RDaHVua1BORyIsInJlcXVpcmVTaGFycCIsInBuZyIsInRvQnVmZmVyIiwiZSIsImxhc3RDaHVua1BOR0Jhc2U2NCIsInJlZ2lzdGVyU3RhcnRTdWNjZXNzIiwicmVnaXN0ZXJTdGFydEZhaWx1cmUiLCJyZXNwb25zZVN0cmVhbSIsImNvbnN1bWVyIiwic3RhcnQiLCJzZXJ2ZXJUaW1lb3V0Iiwic3RvcCIsInN0YXJ0UHJvbWlzZSIsIkIiLCJyZXMiLCJyZWoiLCJ0aW1lb3V0Iiwib25FcnIiLCJlcnIiLCJsb2ciLCJlcnJvciIsIm1lc3NhZ2UiLCJvbkNsb3NlIiwiZGVidWciLCJheGlvcyIsInJlc3BvbnNlVHlwZSIsImRhdGEiLCJvbmNlIiwib24iLCJwaXBlIiwidW5waXBlIiwiZGVzdHJveSIsIndyaXRlIiwiZXhwb3J0cyJdLCJzb3VyY2VSb290IjoiLi4vLi4iLCJzb3VyY2VzIjpbImxpYi9tanBlZy5qcyJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgXyBmcm9tICdsb2Rhc2gnO1xuaW1wb3J0IGxvZyBmcm9tICcuL2xvZ2dlcic7XG5pbXBvcnQgQiBmcm9tICdibHVlYmlyZCc7XG5pbXBvcnQge3JlcXVpcmVTaGFycH0gZnJvbSAnLi9pbWFnZS11dGlsJztcbmltcG9ydCB7V3JpdGFibGV9IGZyb20gJ3N0cmVhbSc7XG5pbXBvcnQge3JlcXVpcmVQYWNrYWdlfSBmcm9tICcuL25vZGUnO1xuaW1wb3J0IGF4aW9zIGZyb20gJ2F4aW9zJztcblxuLy8gbGF6eSBsb2FkIHRoaXMsIGFzIGl0IG1pZ2h0IG5vdCBiZSBhdmFpbGFibGVcbmxldCBNSnBlZ0NvbnN1bWVyID0gbnVsbDtcblxuLyoqXG4gKiBAdGhyb3dzIHtFcnJvcn0gSWYgYG1qcGVnLWNvbnN1bWVyYCBtb2R1bGUgaXMgbm90IGluc3RhbGxlZCBvciBjYW5ub3QgYmUgbG9hZGVkXG4gKi9cbmFzeW5jIGZ1bmN0aW9uIGluaXRNSnBlZ0NvbnN1bWVyICgpIHtcbiAgaWYgKCFNSnBlZ0NvbnN1bWVyKSB7XG4gICAgdHJ5IHtcbiAgICAgIE1KcGVnQ29uc3VtZXIgPSBhd2FpdCByZXF1aXJlUGFja2FnZSgnbWpwZWctY29uc3VtZXInKTtcbiAgICB9IGNhdGNoIChpZ24pIHt9XG4gIH1cbiAgaWYgKCFNSnBlZ0NvbnN1bWVyKSB7XG4gICAgdGhyb3cgbmV3IEVycm9yKFxuICAgICAgJ21qcGVnLWNvbnN1bWVyIG1vZHVsZSBpcyByZXF1aXJlZCB0byB1c2UgTUpQRUctb3Zlci1IVFRQIGZlYXR1cmVzLiAnICtcbiAgICAgICAgJ1BsZWFzZSBpbnN0YWxsIGl0IGZpcnN0IChucG0gaSAtZyBtanBlZy1jb25zdW1lcikgYW5kIHJlc3RhcnQgQXJtb3IuJ1xuICAgICk7XG4gIH1cbn1cblxuLy8gYW1vdW50IG9mIHRpbWUgdG8gd2FpdCBmb3IgdGhlIGZpcnN0IGltYWdlIGluIHRoZSBzdHJlYW1cbmNvbnN0IE1KUEVHX1NFUlZFUl9USU1FT1VUX01TID0gMTAwMDA7XG5cbi8qKiBDbGFzcyB3aGljaCBzdG9yZXMgdGhlIGxhc3QgYml0IG9mIGRhdGEgc3RyZWFtZWQgaW50byBpdCAqL1xuY2xhc3MgTUpwZWdTdHJlYW0gZXh0ZW5kcyBXcml0YWJsZSB7XG4gIC8qKlxuICAgKiBAdHlwZSB7bnVtYmVyfVxuICAgKi9cbiAgdXBkYXRlQ291bnQgPSAwO1xuXG4gIC8qKlxuICAgKiBDcmVhdGUgYW4gTUpwZWdTdHJlYW1cbiAgICogQHBhcmFtIHtzdHJpbmd9IG1KcGVnVXJsIC0gVVJMIG9mIE1KUEVHLW92ZXItSFRUUCBzdHJlYW1cbiAgICogQHBhcmFtIHtmdW5jdGlvbn0gW2Vycm9ySGFuZGxlcj1ub29wXSAtIGFkZGl0aW9uYWwgZnVuY3Rpb24gdGhhdCB3aWxsIGJlXG4gICAqIGNhbGxlZCBpbiB0aGUgY2FzZSBvZiBhbnkgZXJyb3JzLlxuICAgKiBAcGFyYW0ge29iamVjdH0gW29wdGlvbnM9e31dIC0gT3B0aW9ucyB0byBwYXNzIHRvIHRoZSBXcml0YWJsZSBjb25zdHJ1Y3RvclxuICAgKi9cbiAgY29uc3RydWN0b3IgKG1KcGVnVXJsLCBlcnJvckhhbmRsZXIgPSBfLm5vb3AsIG9wdGlvbnMgPSB7fSkge1xuICAgIHN1cGVyKG9wdGlvbnMpO1xuXG4gICAgdGhpcy5lcnJvckhhbmRsZXIgPSBlcnJvckhhbmRsZXI7XG4gICAgdGhpcy51cmwgPSBtSnBlZ1VybDtcbiAgICB0aGlzLmNsZWFyKCk7XG4gIH1cblxuICAvKipcbiAgICogR2V0IHRoZSBiYXNlNjQtZW5jb2RlZCB2ZXJzaW9uIG9mIHRoZSBKUEVHXG4gICAqXG4gICAqIEByZXR1cm5zIHs/c3RyaW5nfSBiYXNlNjQtZW5jb2RlZCBKUEVHIGltYWdlIGRhdGFcbiAgICogb3IgYG51bGxgIGlmIG5vIGltYWdlIGNhbiBiZSBwYXJzZWRcbiAgICovXG4gIGdldCBsYXN0Q2h1bmtCYXNlNjQgKCkge1xuICAgIGNvbnN0IGxhc3RDaHVuayA9IC8qKiBAdHlwZSB7QnVmZmVyfSAqLyAodGhpcy5sYXN0Q2h1bmspO1xuICAgIHJldHVybiAhXy5pc0VtcHR5KHRoaXMubGFzdENodW5rKSAmJiBfLmlzQnVmZmVyKHRoaXMubGFzdENodW5rKVxuICAgICAgPyBsYXN0Q2h1bmsudG9TdHJpbmcoJ2Jhc2U2NCcpXG4gICAgICA6IG51bGw7XG4gIH1cblxuICAvKipcbiAgICogR2V0IHRoZSBQTkcgdmVyc2lvbiBvZiB0aGUgSlBFRyBidWZmZXJcbiAgICpcbiAgICogQHJldHVybnMge1Byb21pc2U8QnVmZmVyPz59IFBORyBpbWFnZSBkYXRhIG9yIGBudWxsYCBpZiBubyBQTkdcbiAgICogaW1hZ2UgY2FuIGJlIHBhcnNlZFxuICAgKi9cbiAgYXN5bmMgbGFzdENodW5rUE5HICgpIHtcbiAgICBjb25zdCBsYXN0Q2h1bmsgPSAvKiogQHR5cGUge0J1ZmZlcn0gKi8gKHRoaXMubGFzdENodW5rKTtcbiAgICBpZiAoXy5pc0VtcHR5KGxhc3RDaHVuaykgfHwgIV8uaXNCdWZmZXIobGFzdENodW5rKSkge1xuICAgICAgcmV0dXJuIG51bGw7XG4gICAgfVxuXG4gICAgdHJ5IHtcbiAgICAgIHJldHVybiBhd2FpdCByZXF1aXJlU2hhcnAoKShsYXN0Q2h1bmspLnBuZygpLnRvQnVmZmVyKCk7XG4gICAgfSBjYXRjaCAoZSkge1xuICAgICAgcmV0dXJuIG51bGw7XG4gICAgfVxuICB9XG5cbiAgLyoqXG4gICAqIEdldCB0aGUgYmFzZTY0LWVuY29kZWQgdmVyc2lvbiBvZiB0aGUgUE5HXG4gICAqXG4gICAqIEByZXR1cm5zIHtQcm9taXNlPHN0cmluZz8+fSBiYXNlNjQtZW5jb2RlZCBQTkcgaW1hZ2UgZGF0YVxuICAgKiBvciBgbnVsbGAgaWYgbm8gaW1hZ2UgY2FuIGJlIHBhcnNlZFxuICAgKi9cbiAgYXN5bmMgbGFzdENodW5rUE5HQmFzZTY0ICgpIHtcbiAgICBjb25zdCBwbmcgPSBhd2FpdCB0aGlzLmxhc3RDaHVua1BORygpO1xuICAgIHJldHVybiBwbmcgPyBwbmcudG9TdHJpbmcoJ2Jhc2U2NCcpIDogbnVsbDtcbiAgfVxuXG4gIC8qKlxuICAgKiBSZXNldCBpbnRlcm5hbCBzdGF0ZVxuICAgKi9cbiAgY2xlYXIgKCkge1xuICAgIHRoaXMucmVnaXN0ZXJTdGFydFN1Y2Nlc3MgPSBudWxsO1xuICAgIHRoaXMucmVnaXN0ZXJTdGFydEZhaWx1cmUgPSBudWxsO1xuICAgIHRoaXMucmVzcG9uc2VTdHJlYW0gPSBudWxsO1xuICAgIHRoaXMuY29uc3VtZXIgPSBudWxsO1xuICAgIHRoaXMubGFzdENodW5rID0gbnVsbDtcbiAgICB0aGlzLnVwZGF0ZUNvdW50ID0gMDtcbiAgfVxuXG4gIC8qKlxuICAgKiBTdGFydCByZWFkaW5nIHRoZSBNSnBlZyBzdHJlYW0gYW5kIHN0b3JpbmcgdGhlIGxhc3QgaW1hZ2VcbiAgICovXG4gIGFzeW5jIHN0YXJ0IChzZXJ2ZXJUaW1lb3V0ID0gTUpQRUdfU0VSVkVSX1RJTUVPVVRfTVMpIHtcbiAgICAvLyBlbnN1cmUgd2UncmUgbm90IHN0YXJ0ZWQgYWxyZWFkeVxuICAgIHRoaXMuc3RvcCgpO1xuXG4gICAgYXdhaXQgaW5pdE1KcGVnQ29uc3VtZXIoKTtcblxuICAgIHRoaXMuY29uc3VtZXIgPSBuZXcgTUpwZWdDb25zdW1lcigpO1xuXG4gICAgLy8gdXNlIHRoZSBkZWZlcnJlZCBwYXR0ZXJuIHNvIHdlIGNhbiB3YWl0IGZvciB0aGUgc3RhcnQgb2YgdGhlIHN0cmVhbVxuICAgIC8vIGJhc2VkIG9uIHdoYXQgY29tZXMgaW4gZnJvbSBhbiBleHRlcm5hbCBwaXBlXG4gICAgY29uc3Qgc3RhcnRQcm9taXNlID0gbmV3IEIoKHJlcywgcmVqKSA9PiB7XG4gICAgICB0aGlzLnJlZ2lzdGVyU3RhcnRTdWNjZXNzID0gcmVzO1xuICAgICAgdGhpcy5yZWdpc3RlclN0YXJ0RmFpbHVyZSA9IHJlajtcbiAgICB9KVxuICAgICAgLy8gc3RhcnQgYSB0aW1lb3V0IHNvIHRoYXQgaWYgdGhlIHNlcnZlciBkb2VzIG5vdCByZXR1cm4gZGF0YSwgd2UgZG9uJ3RcbiAgICAgIC8vIGJsb2NrIGZvcmV2ZXIuXG4gICAgICAudGltZW91dChcbiAgICAgICAgc2VydmVyVGltZW91dCxcbiAgICAgICAgYFdhaXRlZCAke3NlcnZlclRpbWVvdXR9bXMgYnV0IHRoZSBNSlBFRyBzZXJ2ZXIgbmV2ZXIgc2VudCBhbnkgaW1hZ2VzYFxuICAgICAgKTtcblxuICAgIGNvbnN0IHVybCA9IHRoaXMudXJsO1xuICAgIGNvbnN0IG9uRXJyID0gKGVycikgPT4ge1xuICAgICAgLy8gTWFrZSBzdXJlIHdlIGRvbid0IGdldCBhbiBvdXRkYXRlZCBzY3JlZW5zaG90IGlmIHRoZXJlIHdhcyBhbiBlcnJvclxuICAgICAgdGhpcy5sYXN0Q2h1bmsgPSBudWxsO1xuXG4gICAgICBsb2cuZXJyb3IoYEVycm9yIGdldHRpbmcgTUpwZWcgc2NyZWVuc2hvdCBjaHVuazogJHtlcnIubWVzc2FnZX1gKTtcbiAgICAgIHRoaXMuZXJyb3JIYW5kbGVyKGVycik7XG4gICAgICBpZiAodGhpcy5yZWdpc3RlclN0YXJ0RmFpbHVyZSkge1xuICAgICAgICB0aGlzLnJlZ2lzdGVyU3RhcnRGYWlsdXJlKGVycik7XG4gICAgICB9XG4gICAgfTtcbiAgICBjb25zdCBvbkNsb3NlID0gKCkgPT4ge1xuICAgICAgbG9nLmRlYnVnKGBUaGUgY29ubmVjdGlvbiB0byBNSlBFRyBzZXJ2ZXIgYXQgJHt1cmx9IGhhcyBiZWVuIGNsb3NlZGApO1xuICAgICAgdGhpcy5sYXN0Q2h1bmsgPSBudWxsO1xuICAgIH07XG5cbiAgICB0cnkge1xuICAgICAgdGhpcy5yZXNwb25zZVN0cmVhbSA9IChcbiAgICAgICAgYXdhaXQgYXhpb3Moe1xuICAgICAgICAgIHVybCxcbiAgICAgICAgICByZXNwb25zZVR5cGU6ICdzdHJlYW0nLFxuICAgICAgICAgIHRpbWVvdXQ6IHNlcnZlclRpbWVvdXQsXG4gICAgICAgIH0pXG4gICAgICApLmRhdGE7XG4gICAgfSBjYXRjaCAoZSkge1xuICAgICAgcmV0dXJuIG9uRXJyKGUpO1xuICAgIH1cblxuICAgIHRoaXMucmVzcG9uc2VTdHJlYW1cbiAgICAgIC5vbmNlKCdjbG9zZScsIG9uQ2xvc2UpXG4gICAgICAub24oJ2Vycm9yJywgb25FcnIpIC8vIGVuc3VyZSB3ZSBkbyBzb21ldGhpbmcgd2l0aCBlcnJvcnNcbiAgICAgIC5waXBlKHRoaXMuY29uc3VtZXIpIC8vIGFsbG93IGNodW5raW5nIGFuZCB0cmFuc2Zvcm1pbmcgb2YganBlZyBkYXRhXG4gICAgICAucGlwZSh0aGlzKTsgLy8gc2VuZCB0aGUgYWN0dWFsIGpwZWdzIHRvIG91cnNlbGZcblxuICAgIGF3YWl0IHN0YXJ0UHJvbWlzZTtcbiAgfVxuXG4gIC8qKlxuICAgKiBTdG9wIHJlYWRpbmcgdGhlIE1KcGVnIHN0cmVhbS4gRW5zdXJlIHdlIGRpc2Nvbm5lY3QgYWxsIHRoZSBwaXBlcyBhbmQgc3RvcFxuICAgKiB0aGUgSFRUUCByZXF1ZXN0IGl0c2VsZi4gVGhlbiByZXNldCB0aGUgc3RhdGUuXG4gICAqL1xuICBzdG9wICgpIHtcbiAgICBpZiAoIXRoaXMuY29uc3VtZXIpIHtcbiAgICAgIHJldHVybjtcbiAgICB9XG5cbiAgICB0aGlzLnJlc3BvbnNlU3RyZWFtLnVucGlwZSh0aGlzLmNvbnN1bWVyKTtcbiAgICB0aGlzLmNvbnN1bWVyLnVucGlwZSh0aGlzKTtcbiAgICB0aGlzLnJlc3BvbnNlU3RyZWFtLmRlc3Ryb3koKTtcbiAgICB0aGlzLmNsZWFyKCk7XG4gIH1cblxuICAvKipcbiAgICogT3ZlcnJpZGUgdGhlIFdyaXRhYmxlIHdyaXRlKCkgbWV0aG9kIGluIG9yZGVyIHRvIHNhdmUgdGhlIGxhc3QgaW1hZ2UgYW5kXG4gICAqIGxvZyB0aGUgbnVtYmVyIG9mIGltYWdlcyB3ZSBoYXZlIHJlY2VpdmVkXG4gICAqIEBvdmVycmlkZVxuICAgKiBAcGFyYW0ge0J1ZmZlcn0gZGF0YSAtIGJpbmFyeSBkYXRhIHN0cmVhbWVkIGZyb20gdGhlIE1KcGVnIGNvbnN1bWVyXG4gICAqL1xuICB3cml0ZSAoZGF0YSkge1xuICAgIHRoaXMubGFzdENodW5rID0gZGF0YTtcbiAgICB0aGlzLnVwZGF0ZUNvdW50Kys7XG5cbiAgICBpZiAodGhpcy5yZWdpc3RlclN0YXJ0U3VjY2Vzcykge1xuICAgICAgdGhpcy5yZWdpc3RlclN0YXJ0U3VjY2VzcygpO1xuICAgICAgdGhpcy5yZWdpc3RlclN0YXJ0U3VjY2VzcyA9IG51bGw7XG4gICAgfVxuXG4gICAgcmV0dXJuIHRydWU7XG4gIH1cbn1cblxuZXhwb3J0IHtNSnBlZ1N0cmVhbX07XG4iXSwibWFwcGluZ3MiOiI7Ozs7Ozs7O0FBQUEsSUFBQUEsT0FBQSxHQUFBQyxzQkFBQSxDQUFBQyxPQUFBO0FBQ0EsSUFBQUMsT0FBQSxHQUFBRixzQkFBQSxDQUFBQyxPQUFBO0FBQ0EsSUFBQUUsU0FBQSxHQUFBSCxzQkFBQSxDQUFBQyxPQUFBO0FBQ0EsSUFBQUcsVUFBQSxHQUFBSCxPQUFBO0FBQ0EsSUFBQUksT0FBQSxHQUFBSixPQUFBO0FBQ0EsSUFBQUssS0FBQSxHQUFBTCxPQUFBO0FBQ0EsSUFBQU0sTUFBQSxHQUFBUCxzQkFBQSxDQUFBQyxPQUFBO0FBR0EsSUFBSU8sYUFBYSxHQUFHLElBQUk7QUFLeEIsZUFBZUMsaUJBQWlCQSxDQUFBLEVBQUk7RUFDbEMsSUFBSSxDQUFDRCxhQUFhLEVBQUU7SUFDbEIsSUFBSTtNQUNGQSxhQUFhLEdBQUcsTUFBTSxJQUFBRSxvQkFBYyxFQUFDLGdCQUFnQixDQUFDO0lBQ3hELENBQUMsQ0FBQyxPQUFPQyxHQUFHLEVBQUUsQ0FBQztFQUNqQjtFQUNBLElBQUksQ0FBQ0gsYUFBYSxFQUFFO0lBQ2xCLE1BQU0sSUFBSUksS0FBSyxDQUNiLHFFQUFxRSxHQUNuRSxzRUFDSixDQUFDO0VBQ0g7QUFDRjtBQUdBLE1BQU1DLHVCQUF1QixHQUFHLEtBQUs7QUFHckMsTUFBTUMsV0FBVyxTQUFTQyxnQkFBUSxDQUFDO0VBYWpDQyxXQUFXQSxDQUFFQyxRQUFRLEVBQUVDLFlBQVksR0FBR0MsZUFBQyxDQUFDQyxJQUFJLEVBQUVDLE9BQU8sR0FBRyxDQUFDLENBQUMsRUFBRTtJQUMxRCxLQUFLLENBQUNBLE9BQU8sQ0FBQztJQUFDLEtBVmpCQyxXQUFXLEdBQUcsQ0FBQztJQVliLElBQUksQ0FBQ0osWUFBWSxHQUFHQSxZQUFZO0lBQ2hDLElBQUksQ0FBQ0ssR0FBRyxHQUFHTixRQUFRO0lBQ25CLElBQUksQ0FBQ08sS0FBSyxDQUFDLENBQUM7RUFDZDtFQVFBLElBQUlDLGVBQWVBLENBQUEsRUFBSTtJQUNyQixNQUFNQyxTQUFTLEdBQTBCLElBQUksQ0FBQ0EsU0FBVTtJQUN4RCxPQUFPLENBQUNQLGVBQUMsQ0FBQ1EsT0FBTyxDQUFDLElBQUksQ0FBQ0QsU0FBUyxDQUFDLElBQUlQLGVBQUMsQ0FBQ1MsUUFBUSxDQUFDLElBQUksQ0FBQ0YsU0FBUyxDQUFDLEdBQzNEQSxTQUFTLENBQUNHLFFBQVEsQ0FBQyxRQUFRLENBQUMsR0FDNUIsSUFBSTtFQUNWO0VBUUEsTUFBTUMsWUFBWUEsQ0FBQSxFQUFJO0lBQ3BCLE1BQU1KLFNBQVMsR0FBMEIsSUFBSSxDQUFDQSxTQUFVO0lBQ3hELElBQUlQLGVBQUMsQ0FBQ1EsT0FBTyxDQUFDRCxTQUFTLENBQUMsSUFBSSxDQUFDUCxlQUFDLENBQUNTLFFBQVEsQ0FBQ0YsU0FBUyxDQUFDLEVBQUU7TUFDbEQsT0FBTyxJQUFJO0lBQ2I7SUFFQSxJQUFJO01BQ0YsT0FBTyxNQUFNLElBQUFLLHVCQUFZLEVBQUMsQ0FBQyxDQUFDTCxTQUFTLENBQUMsQ0FBQ00sR0FBRyxDQUFDLENBQUMsQ0FBQ0MsUUFBUSxDQUFDLENBQUM7SUFDekQsQ0FBQyxDQUFDLE9BQU9DLENBQUMsRUFBRTtNQUNWLE9BQU8sSUFBSTtJQUNiO0VBQ0Y7RUFRQSxNQUFNQyxrQkFBa0JBLENBQUEsRUFBSTtJQUMxQixNQUFNSCxHQUFHLEdBQUcsTUFBTSxJQUFJLENBQUNGLFlBQVksQ0FBQyxDQUFDO0lBQ3JDLE9BQU9FLEdBQUcsR0FBR0EsR0FBRyxDQUFDSCxRQUFRLENBQUMsUUFBUSxDQUFDLEdBQUcsSUFBSTtFQUM1QztFQUtBTCxLQUFLQSxDQUFBLEVBQUk7SUFDUCxJQUFJLENBQUNZLG9CQUFvQixHQUFHLElBQUk7SUFDaEMsSUFBSSxDQUFDQyxvQkFBb0IsR0FBRyxJQUFJO0lBQ2hDLElBQUksQ0FBQ0MsY0FBYyxHQUFHLElBQUk7SUFDMUIsSUFBSSxDQUFDQyxRQUFRLEdBQUcsSUFBSTtJQUNwQixJQUFJLENBQUNiLFNBQVMsR0FBRyxJQUFJO0lBQ3JCLElBQUksQ0FBQ0osV0FBVyxHQUFHLENBQUM7RUFDdEI7RUFLQSxNQUFNa0IsS0FBS0EsQ0FBRUMsYUFBYSxHQUFHNUIsdUJBQXVCLEVBQUU7SUFFcEQsSUFBSSxDQUFDNkIsSUFBSSxDQUFDLENBQUM7SUFFWCxNQUFNakMsaUJBQWlCLENBQUMsQ0FBQztJQUV6QixJQUFJLENBQUM4QixRQUFRLEdBQUcsSUFBSS9CLGFBQWEsQ0FBQyxDQUFDO0lBSW5DLE1BQU1tQyxZQUFZLEdBQUcsSUFBSUMsaUJBQUMsQ0FBQyxDQUFDQyxHQUFHLEVBQUVDLEdBQUcsS0FBSztNQUN2QyxJQUFJLENBQUNWLG9CQUFvQixHQUFHUyxHQUFHO01BQy9CLElBQUksQ0FBQ1Isb0JBQW9CLEdBQUdTLEdBQUc7SUFDakMsQ0FBQyxDQUFDLENBR0NDLE9BQU8sQ0FDTk4sYUFBYSxFQUNaLFVBQVNBLGFBQWMsK0NBQzFCLENBQUM7SUFFSCxNQUFNbEIsR0FBRyxHQUFHLElBQUksQ0FBQ0EsR0FBRztJQUNwQixNQUFNeUIsS0FBSyxHQUFJQyxHQUFHLElBQUs7TUFFckIsSUFBSSxDQUFDdkIsU0FBUyxHQUFHLElBQUk7TUFFckJ3QixlQUFHLENBQUNDLEtBQUssQ0FBRSx5Q0FBd0NGLEdBQUcsQ0FBQ0csT0FBUSxFQUFDLENBQUM7TUFDakUsSUFBSSxDQUFDbEMsWUFBWSxDQUFDK0IsR0FBRyxDQUFDO01BQ3RCLElBQUksSUFBSSxDQUFDWixvQkFBb0IsRUFBRTtRQUM3QixJQUFJLENBQUNBLG9CQUFvQixDQUFDWSxHQUFHLENBQUM7TUFDaEM7SUFDRixDQUFDO0lBQ0QsTUFBTUksT0FBTyxHQUFHQSxDQUFBLEtBQU07TUFDcEJILGVBQUcsQ0FBQ0ksS0FBSyxDQUFFLHFDQUFvQy9CLEdBQUksa0JBQWlCLENBQUM7TUFDckUsSUFBSSxDQUFDRyxTQUFTLEdBQUcsSUFBSTtJQUN2QixDQUFDO0lBRUQsSUFBSTtNQUNGLElBQUksQ0FBQ1ksY0FBYyxHQUFHLENBQ3BCLE1BQU0sSUFBQWlCLGNBQUssRUFBQztRQUNWaEMsR0FBRztRQUNIaUMsWUFBWSxFQUFFLFFBQVE7UUFDdEJULE9BQU8sRUFBRU47TUFDWCxDQUFDLENBQUMsRUFDRmdCLElBQUk7SUFDUixDQUFDLENBQUMsT0FBT3ZCLENBQUMsRUFBRTtNQUNWLE9BQU9jLEtBQUssQ0FBQ2QsQ0FBQyxDQUFDO0lBQ2pCO0lBRUEsSUFBSSxDQUFDSSxjQUFjLENBQ2hCb0IsSUFBSSxDQUFDLE9BQU8sRUFBRUwsT0FBTyxDQUFDLENBQ3RCTSxFQUFFLENBQUMsT0FBTyxFQUFFWCxLQUFLLENBQUMsQ0FDbEJZLElBQUksQ0FBQyxJQUFJLENBQUNyQixRQUFRLENBQUMsQ0FDbkJxQixJQUFJLENBQUMsSUFBSSxDQUFDO0lBRWIsTUFBTWpCLFlBQVk7RUFDcEI7RUFNQUQsSUFBSUEsQ0FBQSxFQUFJO0lBQ04sSUFBSSxDQUFDLElBQUksQ0FBQ0gsUUFBUSxFQUFFO01BQ2xCO0lBQ0Y7SUFFQSxJQUFJLENBQUNELGNBQWMsQ0FBQ3VCLE1BQU0sQ0FBQyxJQUFJLENBQUN0QixRQUFRLENBQUM7SUFDekMsSUFBSSxDQUFDQSxRQUFRLENBQUNzQixNQUFNLENBQUMsSUFBSSxDQUFDO0lBQzFCLElBQUksQ0FBQ3ZCLGNBQWMsQ0FBQ3dCLE9BQU8sQ0FBQyxDQUFDO0lBQzdCLElBQUksQ0FBQ3RDLEtBQUssQ0FBQyxDQUFDO0VBQ2Q7RUFRQXVDLEtBQUtBLENBQUVOLElBQUksRUFBRTtJQUNYLElBQUksQ0FBQy9CLFNBQVMsR0FBRytCLElBQUk7SUFDckIsSUFBSSxDQUFDbkMsV0FBVyxFQUFFO0lBRWxCLElBQUksSUFBSSxDQUFDYyxvQkFBb0IsRUFBRTtNQUM3QixJQUFJLENBQUNBLG9CQUFvQixDQUFDLENBQUM7TUFDM0IsSUFBSSxDQUFDQSxvQkFBb0IsR0FBRyxJQUFJO0lBQ2xDO0lBRUEsT0FBTyxJQUFJO0VBQ2I7QUFDRjtBQUFDNEIsT0FBQSxDQUFBbEQsV0FBQSxHQUFBQSxXQUFBIn0=
+exports.MJpegStream = MJpegStream;
+//# sourceMappingURL=mjpeg.js.map
