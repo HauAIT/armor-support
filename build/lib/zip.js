@@ -427,6 +427,7 @@ async function assertValidZip(filePath) {
     const fd = await fs_2.default.open(filePath, 'r');
     try {
         const buffer = Buffer.alloc(ZIP_MAGIC.length);
+        // @ts-ignore
         await fs_2.default.read(fd, buffer, 0, ZIP_MAGIC.length, 0);
         const signature = buffer.toString('ascii');
         if (signature !== ZIP_MAGIC) {

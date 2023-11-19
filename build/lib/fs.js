@@ -143,7 +143,9 @@ const fs = {
      * Given a glob pattern, resolve with list of files matching that pattern
      * @see https://github.com/isaacs/node-glob
      */
-    glob: /** @type {(pattern: string, opts?: import('glob').GlobOptions) => B<string[]>} */ ((pattern, options) => bluebird_1.default.resolve(options ? (0, glob_1.glob)(pattern, options) : (0, glob_1.glob)(pattern))),
+    glob: /** @type {(pattern: string, opts?: import('glob').IOptions) => B<string[]>} */ (
+    // @ts-ignore
+    (pattern, options) => bluebird_1.default.resolve(options ? (0, glob_1.glob)(pattern, options) : (0, glob_1.glob)(pattern, {}))),
     /**
      * Sanitize a filename
      * @see https://github.com/parshap/node-sanitize-filename
@@ -365,7 +367,6 @@ exports.default = fs;
  * @template {NodeJS.ArrayBufferView} TBuffer
  * @callback ReadFn
  * @param {number} fd
- * @param {TBuffer|import('node:fs').ReadAsyncOptions<TBuffer>} buffer
  * @param {number} [offset]
  * @param {number} [length]
  * @param {number?} [position]

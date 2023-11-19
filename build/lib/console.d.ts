@@ -26,7 +26,7 @@ export class CliConsole {
      * @param {keyof typeof CliConsole['symbolToColor']} [symbol] - Symbol to use
      * @returns {string|undefined}
      */
-    decorate(msg?: string | undefined, symbol?: "info" | "success" | "warning" | "error" | undefined): string | undefined;
+    decorate(msg?: string | undefined, symbol?: "error" | "warning" | "info" | "success" | undefined): string | undefined;
     /**
      * Writes to `STDOUT`.  Must be stringifyable.
      *

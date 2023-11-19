@@ -38,7 +38,7 @@ declare const _default: {
         md5(filePath: import("fs").PathLike): Promise<string>;
         mv: (from: string, to: string, opts?: import("mv").Options | undefined) => B<void>;
         which: typeof import("which");
-        glob: (pattern: string, opts?: import("glob").GlobOptions | undefined) => B<string[]>;
+        glob: (pattern: string, opts?: import("glob").IOptions | undefined) => B<string[]>;
         sanitizeName: typeof import("sanitize-filename");
         hash(filePath: import("fs").PathLike, algorithm?: string | undefined): Promise<string>;
         walk(dir: string, opts?: import("klaw").Options | undefined): import("klaw").Walker;
