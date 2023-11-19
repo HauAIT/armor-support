@@ -33,7 +33,7 @@
     "eslint-config-armor": "github:ait-software/eslint-config-armor",
     "form-data": "^4.0.0",
     "get-stream": "^6.0.0",
-    "glob": "^7.1.2",
+    "glob": "^8.0.2",
     "jimp": "^0.x",
     "jsftp": "^2.1.2",
     "klaw": "^3.0.0",
