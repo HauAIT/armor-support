@@ -1,17 +1,17 @@
-import * as tempDir from './lib/tempdir';
-import * as system from './lib/system';
-import * as util from './lib/util';
-import * as fsIndex from './lib/fs';
-import * as net from './lib/net';
-import * as plist from './lib/plist';
-import * as mkdirpIndex from './lib/mkdirp';
-import * as logger from './lib/logging';
-import * as process from './lib/process';
-import * as zip from './lib/zip';
-import * as imageUtil from './lib/image-util';
-import * as mjpeg from './lib/mjpeg';
-import * as node from './lib/node';
-import * as timing from './lib/timing';
+import * as tempDir from './build/lib/tempdir';
+import * as system from './build/lib/system';
+import * as util from './build/lib/util';
+import * as fsIndex from './build/lib/fs';
+import * as net from './build/lib/net';
+import * as plist from './build/lib/plist';
+import * as mkdirpIndex from './build/lib/mkdirp';
+import * as logger from './build/lib/logging';
+import * as process from './build/lib/process';
+import * as zip from './build/lib/zip';
+import * as imageUtil from './build/lib/image-util';
+import * as mjpeg from './build/lib/mjpeg';
+import * as node from './build/lib/node';
+import * as timing from './build/lib/timing';
 
 
 const { fs } = fsIndex;
