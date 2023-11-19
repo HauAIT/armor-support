@@ -143,7 +143,7 @@ const fs = {
      * Given a glob pattern, resolve with list of files matching that pattern
      * @see https://github.com/isaacs/node-glob
      */
-    glob: /** @type {(pattern: string, opts?: import('glob').IOptions) => B<string[]>} */ (
+    glob: /** @type {(pattern: string, opts?: import('glob').GlobOptions) => B<string[]>} */ (
     // @ts-ignore
     (pattern, options) => bluebird_1.default.resolve(options ? (0, glob_1.glob)(pattern, options) : (0, glob_1.glob)(pattern, {}))),
     /**

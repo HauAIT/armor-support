@@ -78,7 +78,7 @@ export namespace fs {
     export function mv_1(from: string, to: string, opts?: mv.Options | undefined): B<void>;
     export { mv_1 as mv };
     export { which };
-    export function glob(pattern: string, opts?: import("glob").IOptions | undefined): B<string[]>;
+    export function glob(pattern: string, opts?: import("glob").GlobOptions | undefined): B<string[]>;
     export { sanitize as sanitizeName };
     /**
      * Create a hex digest of some file at `filePath`
@@ -138,7 +138,7 @@ export namespace fs {
     export let open: (path: import("fs").PathLike, flags: import("fs").OpenMode, mode?: import("fs").Mode | undefined) => Promise<number>;
     export let openFile: typeof fsPromises.open;
     export let readdir: typeof fsPromises.readdir;
-    export function read(fd: number, offset: number | undefined, length: number | undefined, position: number | null | undefined): B<{
+    export function read(fd: number, offset?: number | undefined, length?: number | undefined, position?: number | null | undefined): B<{
         bytesRead: number;
         buffer: TBuffer;
     }>;
