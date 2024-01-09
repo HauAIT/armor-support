@@ -27,7 +27,9 @@ export class NPM {
      * @param {ExecOpts} opts
      * @param {Omit<AITProcessExecOptions, 'cwd'>} [execOpts]
      */
-    exec(cmd: string, args: string[], opts: ExecOpts, execOpts?: Omit<any, "cwd"> | undefined): Promise<any>;
+    exec(cmd: string, args: string[], opts: ExecOpts, execOpts?: Omit<import("ait-process").AITProcessExecOptions, "cwd"> | undefined): Promise<import("ait-process").AITProcessExecStringResult & {
+        json?: any;
+    }>;
     /**
      * @param {string} cwd
      * @param {string} pkg
@@ -103,7 +105,7 @@ export type ExecOpts = {
      */
     lockFile?: string | undefined;
 };
-export type AITProcessExecOptions = any;
+export type AITProcessExecOptions = import('ait-process').AITProcessExecOptions;
 export type NpmInstallReceipt = {
     /**
      * - Path to installed package

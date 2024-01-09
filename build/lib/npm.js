@@ -83,7 +83,7 @@ class NPM {
             const _runner = runner;
             runner = async () => await acquireLock(_runner);
         }
-        /** @type {import('ait-process').AITProcessExecResult<string> & {json?: any}} */
+        /** @type {import('ait-process').AITProcessExecStringResult & {json?: any}} */
         let ret;
         try {
             const { stdout, stderr, code } = await runner();
@@ -97,7 +97,7 @@ class NPM {
             catch (ign) { }
         }
         catch (e) {
-            const { stdout = '', stderr = '', code = null, } = /** @type {import('ait-process').ExecError} */ (e);
+            const { stdout = '', stderr = '', code = null, } = /** @type {import('ait-process').AITProcessExecError} */ (e);
             const err = new Error(`npm command '${args.join(' ')}' failed with code ${code}.\n\nSTDOUT:\n${stdout.trim()}\n\nSTDERR:\n${stderr.trim()}`);
             throw err;
         }

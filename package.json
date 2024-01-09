@@ -1,12 +1,9 @@
 {
   "name": "armor-support",
   "description": "Support libs used across armor packages",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "author": "ait-software",
-  "engines": [
-    "node"
-  ],
-  "main": "./build/index.js",
+  "main": "./index.js",
   "bin": {},
   "directories": {
     "lib": "lib"
@@ -20,16 +17,15 @@
   "dependencies": {
     "@babel/runtime": "^7.0.0",
     "@colors/colors": "^1.6.0",
-    "@u4/opencv4nodejs": "^6.5.2",
-    "ait-process": "git+https://ait-software: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@github.com/ait-software/ait-process.git",
+    "ait-process": "*",
     "archiver": "^5.0.0",
-    "armor-types": "git+https://ait-software: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@github.com/ait-software/armor-types.git",
+    "armor-types": "*",
     "axios": "^0.x",
     "base64-stream": "^1.0.0",
     "bluebird": "^3.5.1",
     "bplist-creator": "^0",
     "bplist-parser": "^0.x",
-    "eslint-config-armor": "git+https://ait-software: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@github.com/ait-software/eslint-config-armor.git",
+    "eslint-config-armor": "*",
     "form-data": "^4.0.0",
     "get-stream": "^6.0.0",
     "glob": "^10.3.10",
@@ -52,35 +48,28 @@
     "semver": "^7.0.0",
     "shell-quote": "^1.7.2",
     "source-map-support": "^0.5.5",
+    "ts-node": "^10.9.2",
     "uuid": "^8.0.0",
     "which": "^2.0.0",
     "yauzl": "^2.7.0"
   },
   "scripts": {
     "clean": "rm -rf node_modules && rm -f package-lock.json && npm install",
-    "test": "gulp once",
-    "watch": "gulp watch",
+    "test": "mocha",
     "mocha": "mocha",
-    "e2e-test": "gulp e2e-test",
-    "build": "gulp transpile",
-    "coverage": "gulp coveralls",
-    "precommit-msg": "echo 'Pre-commit checks...' && exit 0",
-    "precommit-test": "REPORTER=dot gulp once",
-    "lint": "gulp eslint",
-    "lint:fix": "gulp eslint --fix"
+    "build": "tsc -b",
+    "lint": "eslint .",
+    "lint:fix": "npm run lint -- --fix"
   },
   "pre-commit": [
     "precommit-msg",
     "precommit-test"
   ],
   "devDependencies": {
-    "ait-async": "github:ait-software/ait-async",
-    "armor-gulp-plugins": "git+https://ait-software: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@github.com/ait-software/armor-gulp-plugins.git",
+    "ait-async": "*",
     "chai": "^4.1.2",
     "chai-as-promised": "^7.1.1",
-    "eslint-config-armor": "git+https://ait-software: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@github.com/ait-software/eslint-config-armor.git",
-    "gulp": "^4.0.0",
-    "mjpeg-server": "^0.3.0",
+    "eslint-config-armor": "*",
     "mocha": "^9.0.0",
     "pre-commit": "^1.1.3",
     "sinon": "^13.0.0"

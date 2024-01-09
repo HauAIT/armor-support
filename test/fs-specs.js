@@ -1,4 +1,4 @@
-import { fs, tempDir } from '../index.js';
+import { fs, tempDir } from '../build/lib';
 import chai from 'chai';
 import path from 'path';
 import { exec } from 'ait-process';

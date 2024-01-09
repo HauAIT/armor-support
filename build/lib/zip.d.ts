@@ -176,4 +176,5 @@ export function assertValidZip(filePath: string): Promise<boolean>;
  * @throws {Error} If there was an error while creating the archive
  */
 export function toArchive(dstPath: string, src?: ZipSourceOptions, opts?: ZipCompressionOptions): Promise<any>;
+import yauzl from 'yauzl';
 //# sourceMappingURL=zip.d.ts.map

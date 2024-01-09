@@ -9,7 +9,6 @@ import * as logger from './logging';
 import * as process from './process';
 import * as zip from './zip';
 import * as imageUtil from './image-util';
-import * as mjpeg from './mjpeg';
 import * as node from './node';
 import * as timing from './timing';
 import * as env from './env';
@@ -32,7 +31,6 @@ export {
   zip,
   imageUtil,
   net,
-  mjpeg,
   node,
   timing,
   env,
@@ -51,7 +49,6 @@ export default {
   zip,
   imageUtil,
   net,
-  mjpeg,
   node,
   timing,
   env,

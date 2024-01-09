@@ -20,7 +20,7 @@
     "outDir": "build",
     "strict": false,
     "checkJs": true,
-    "types": ["node"]
+    "types": ["node"],
   },
   "include": ["lib"]
 }
