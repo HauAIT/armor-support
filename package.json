@@ -1,7 +1,7 @@
 {
   "name": "armor-support",
   "description": "Support libs used across armor packages",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "author": "ait-software",
   "main": "./index.js",
   "bin": {},
@@ -12,7 +12,8 @@
     "index.js",
     "lib",
     "build/index.js",
-    "build/lib"
+    "build/lib",
+    "tsconfig.json"
   ],
   "dependencies": {
     "@babel/runtime": "^7.0.0",
@@ -51,7 +52,8 @@
     "ts-node": "^10.9.2",
     "uuid": "^8.0.0",
     "which": "^2.0.0",
-    "yauzl": "^2.7.0"
+    "yauzl": "^2.7.0",
+    "pkg-dir": "^4.2.0"
   },
   "scripts": {
     "clean": "rm -rf node_modules && rm -f package-lock.json && npm install",
