@@ -1,7 +1,7 @@
 {
   "name": "armor-support",
   "description": "Support libs used across armor packages",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "author": "ait-software",
   "main": "./index.js",
   "bin": {},
