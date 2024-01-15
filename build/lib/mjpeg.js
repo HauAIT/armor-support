@@ -7,7 +7,7 @@ exports.MJpegStream = void 0;
 const lodash_1 = __importDefault(require("lodash"));
 const logger_1 = __importDefault(require("./logger"));
 const bluebird_1 = __importDefault(require("bluebird"));
-const image_util_1 = require("./image-util");
+// import {requireSharp} from './image-util';
 const stream_1 = require("stream");
 const node_1 = require("./node");
 const axios_1 = __importDefault(require("axios"));
@@ -68,16 +68,17 @@ class MJpegStream extends stream_1.Writable {
      * image can be parsed
      */
     async lastChunkPNG() {
-        const lastChunk = /** @type {Buffer} */ (this.lastChunk);
-        if (lodash_1.default.isEmpty(lastChunk) || !lodash_1.default.isBuffer(lastChunk)) {
-            return null;
-        }
-        try {
-            return await (0, image_util_1.requireSharp)()(lastChunk).png().toBuffer();
-        }
-        catch (e) {
-            return null;
-        }
+        // const lastChunk = /** @type {Buffer} */ (this.lastChunk);
+        // if (_.isEmpty(lastChunk) || !_.isBuffer(lastChunk)) {
+        //     return null;
+        // }
+        //
+        // try {
+        //     return await requireSharp()(lastChunk).png().toBuffer();
+        // } catch (e) {
+        //     return null;
+        // }
+        return null;
     }
     /**
      * Get the base64-encoded version of the PNG

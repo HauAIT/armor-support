@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/armor-support-libs.iml" filepath="$PROJECT_DIR$/.idea/armor-support-libs.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/armor-test-helpers.iml" filepath="$PROJECT_DIR$/.idea/armor-test-helpers.iml" />
     </modules>
   </component>
 </project>

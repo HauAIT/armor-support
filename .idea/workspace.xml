@@ -5,112 +5,20 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c32ab401-233b-4e7d-aefc-80082578ad96" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/armor-support-libs.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/index.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/console.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/console.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/console.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/console.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/env.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/env.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/env.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/env.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/fs.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/fs.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/fs.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/fs.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/image-util.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/image-util.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/image-util.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/image-util.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/index.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/index.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/index.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/index.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/log-internal.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/log-internal.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/log-internal.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/log-internal.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/logger.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/logger.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/logger.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/logger.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/logging.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/logging.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/logging.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/logging.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/mjpeg.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/mjpeg.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/mjpeg.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/mjpeg.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/mkdirp.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/mkdirp.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/mkdirp.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/mkdirp.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/net.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/net.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/net.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/net.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/node.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/node.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/node.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/node.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/npm.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/npm.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/npm.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/npm.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/plist.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/plist.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/plist.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/plist.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/process.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/process.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/process.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/process.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/system.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/system.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/system.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/system.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/tempdir.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/tempdir.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/tempdir.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/tempdir.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/timing.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/timing.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/timing.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/timing.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/util.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/util.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/util.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/util.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/zip.d.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/zip.d.ts.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/zip.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/lib/zip.js.map" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/fs-specs.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/helpers.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/image-util-e2e-specs.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/index-specs.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/log-internals-specs.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/logger/helpers.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/logger/logger-force-specs.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/logger/logger-normal-specs.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/logger/logger-test-specs.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/mjpeg-e2e-specs.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/net-e2e-specs.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/node-e2e-specs.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/plist-specs.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/process-specs.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/system-specs.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/tempdir-specs.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/timing-specs.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/util-e2e-specs.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/util-specs.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/zip-e2e-specs.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/lib/fs.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/build/lib/fs.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/lib/image-util.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/build/lib/image-util.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/lib/image-util.d.ts.map" beforeDir="false" afterPath="$PROJECT_DIR$/build/lib/image-util.d.ts.map" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/lib/image-util.js" beforeDir="false" afterPath="$PROJECT_DIR$/build/lib/image-util.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/lib/image-util.js.map" beforeDir="false" afterPath="$PROJECT_DIR$/build/lib/image-util.js.map" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/lib/mjpeg.d.ts.map" beforeDir="false" afterPath="$PROJECT_DIR$/build/lib/mjpeg.d.ts.map" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/lib/mjpeg.js" beforeDir="false" afterPath="$PROJECT_DIR$/build/lib/mjpeg.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/lib/mjpeg.js.map" beforeDir="false" afterPath="$PROJECT_DIR$/build/lib/mjpeg.js.map" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/build/tsconfig.tsbuildinfo" beforeDir="false" afterPath="$PROJECT_DIR$/build/tsconfig.tsbuildinfo" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/fs.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/fs.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/zip.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/zip.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/image-util.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/image-util.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/mjpeg.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/mjpeg.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -152,6 +60,7 @@
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$" />
+      <recent name="$PROJECT_DIR$/build" />
     </key>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
@@ -176,7 +85,18 @@
       <workItem from="1699687825585" duration="1670000" />
       <workItem from="1699707944390" duration="1113000" />
       <workItem from="1700324393672" duration="5925000" />
-      <workItem from="1700365189305" duration="435000" />
+      <workItem from="1700365189305" duration="2939000" />
+      <workItem from="1700390401141" duration="1772000" />
+      <workItem from="1704779046415" duration="8581000" />
+      <workItem from="1704794767839" duration="165000" />
+      <workItem from="1704796213780" duration="222000" />
+      <workItem from="1704797396600" duration="1121000" />
+      <workItem from="1704859876428" duration="804000" />
+      <workItem from="1704861742938" duration="2177000" />
+      <workItem from="1704864787077" duration="11000" />
+      <workItem from="1704867483635" duration="603000" />
+      <workItem from="1705222036128" duration="626000" />
+      <workItem from="1705283212367" duration="3347000" />
     </task>
     <servers />
   </component>
