@@ -114,11 +114,9 @@ export namespace fs {
     /**
      * Reads the closest `package.json` file from absolute path `dir`.
      * @param {string} dir - Directory to search from
-     * @param {import('read-pkg').Options} [opts] - Additional options for `read-pkg`
      * @throws {Error} If there were problems finding or reading a `package.json` file
-     * @returns {import('read-pkg').NormalizedPackageJson} A parsed `package.json`
      */
-    export function readPackageJsonFrom(dir: string, opts?: readPkg.Options | undefined): readPkg.NormalizedPackageJson;
+    export function readPackageJsonFrom(dir: string, opts?: {}): readPkg.NormalizedPackageJson;
     /**
      * Finds the project root directory from `dir`.
      * @param {string} dir - Directory to search from

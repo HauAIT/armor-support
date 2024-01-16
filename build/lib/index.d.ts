@@ -44,7 +44,7 @@ declare const _default: {
         walk(dir: string, opts?: import("klaw").Options | undefined): import("klaw").Walker;
         mkdirp(dir: import("fs").PathLike): Promise<string | undefined>;
         walkDir(dir: string, recursive: boolean, callback: import("./fs").WalkDirCallback): Promise<string | null>;
-        readPackageJsonFrom(dir: string, opts?: import("read-pkg").Options | undefined): import("read-pkg").NormalizedPackageJson;
+        readPackageJsonFrom(dir: string, opts?: {}): import("read-pkg").NormalizedPackageJson;
         findRoot(dir: string): string;
         access: typeof import("fs/promises").access;
         appendFile: typeof import("fs/promises").appendFile;

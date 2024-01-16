@@ -88,7 +88,6 @@ exports.readPackageInDir = lodash_1.default.memoize(
 /**
  *
  * @param {string} cwd - Directory ostensibly having a `package.json`
- * @returns {Promise<import('read-pkg').NormalizedPackageJson|undefined>}
  */
 async function _readPackageInDir(cwd) {
     return await (0, read_pkg_1.default)({ cwd, normalize: true });
@@ -135,7 +134,4 @@ async function _resolveManifestPath(armorHome) {
     armorHome = armorHome ?? (await (0, exports.resolveArmorHome)());
     return path_1.default.join(armorHome, exports.MANIFEST_RELATIVE_PATH);
 });
-/**
- * @typedef {import('read-pkg').NormalizedPackageJson} NormalizedPackageJson
- */
 //# sourceMappingURL=env.js.map

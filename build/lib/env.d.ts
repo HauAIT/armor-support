@@ -29,7 +29,7 @@ export const findArmorDependencyPackage: ((cwd?: string | undefined) => Promise<
 /**
  * Read a `package.json` in dir `cwd`.  If none found, return `undefined`.
  */
-export const readPackageInDir: ((cwd: string) => Promise<import('read-pkg').NormalizedPackageJson | undefined>) & _.MemoizedFunction;
+export const readPackageInDir: ((cwd: string) => Promise<readPkg.NormalizedPackageJson>) & _.MemoizedFunction;
 /**
  * Determines location of Armor's "home" dir
  *
@@ -46,6 +46,6 @@ export const resolveArmorHome: ((cwd?: string | undefined) => Promise<string>) &
  * don't pass a parameter and let `resolveArmorHome()` handle it.
  */
 export const resolveManifestPath: ((armorHome?: string | undefined) => Promise<string>) & _.MemoizedFunction;
-export type NormalizedPackageJson = import('read-pkg').NormalizedPackageJson;
 import _ from 'lodash';
+import readPkg from 'read-pkg';
 //# sourceMappingURL=env.d.ts.map
